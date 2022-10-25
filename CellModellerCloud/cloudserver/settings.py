@@ -147,4 +147,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 APPEND_SLASH = False
 
 mimetypes.add_type("application/javascript", ".js", True)
-mimetypes.add_type("application/javascript", ".js", True)
