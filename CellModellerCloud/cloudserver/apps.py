@@ -1,8 +1,8 @@
 from django.apps import AppConfig
 
 class MainAppConfig(AppConfig):
-	name = "VizToolServer"
-	verbose_name = "CellModeller Visualization Tool"
+	name = "cloudserver"
+	verbose_name = "CellModeller Cloud"
 
 	def ready(self):
 		pass
