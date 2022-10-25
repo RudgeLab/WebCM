@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{% block title %}CellModeller Cloud{% endblock %}</title>
+	<script src="/static/scripts/wall-render.js" type="module"></script>
+	<style type="text/css" rel="stylesheet">
+		html, body {
+			width: 100%;
+			height: 100%;
+
+			padding: 0;
+			margin: 0;
+		}
+
+		body {
+			position: relative;
+		}
+
+		#bgcanvas, #wallbg-content-container {
+			position: absolute;
+			left: 0;
+			right: 0;
+
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+	{% block header %}{% endblock %}
+</head>
+<body>
+	<canvas id="bgcanvas"></canvas>
+	<div id="wallbg-content-container">
+		{% block content %}{% endblock %}
+	</div>
+</body>
+</html>

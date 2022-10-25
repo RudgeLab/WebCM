@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="/static/scripts/gl-matrix-min.js" type="module"></script>
+	<script src="/static/scripts/viewer-main.js" type="module"></script>
+	<script src="/static/scripts/viewer-render.js" type="module"></script>
+	<link rel="stylesheet" href="/static/viewer-stylesheet.css"/>
+	<title>CellModeller Simulation</title>
+</head>
+<body>
+	<input type="hidden" id="uuid-field" value="{{ simulation_uuid }}">
+
+	<div id="stackedcontainer">
+		<canvas id="renderTargetCanvas" tabindex="1"></canvas>
+		<div id="canvas-overlay" tabindex="-1">
+
+			<div class="center-children">
+				<div id="timeline-header">
+					<div class="item-background" style="width: 100%">
+						<input type="range" id="frame-timeline" class="force-input">
+					</div>
+					<ul id="timeline-controls">
+						<li>
+							<div id="status-container" class="center-children item-background"><p id="status-label">Status: Offline</p></div>
+						</li>
+						<li class="item-background">
+							<div class="center-children"><p id="sim-name" class="center-children">Name: No Simulation</p></div>
+							<div class="center-children"><p id="sim-frame">Frame: 0 / 0</p></div>
+						</li>
+						<li>
+							<div class="item-background">
+								<input type="checkbox" id="snap-to-last" name="snap-to-last" class="force-input" checked>
+								<label for="snap-to-last">Snap to last step</label>
+							</div>
+						</li>
+					</ul>
+				</div>
+			</div>
+			<div id="viewer-details" class="item-background">
+				<table>
+					<tbody>
+						<tr><td colspan="2">
+							<div class="details-header"><span></span><span>Simulation details</span><span></span></div>
+						</td></tr>
+					</tbody>
+					<tbody class="details-keyvalue-table">
+						<tr><td>Time</td><td id="simdets-time">0</td></tr>
+						<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
+						<tr><td>Thin outlines</td><td>
+							<input type="checkbox" id="thin-cell-outlines" class="force-input">
+						</td></tr>
+					</tbody>
+					<tbody id="cell-details-header">
+						<tr><td colspan="2">
+							<div class="details-header"><span></span><span>Cell Information</span><span></span></div>
+						</td></tr>
+					</tbody>
+					<tbody id="cell-details-section" class="details-keyvalue-table">
+						<tr><td>Index</td><td>N/A</td></tr>
+						<tr><td>Radius</td><td>N/A</td></tr>
+						<tr><td>Length</td><td>N/A</td></tr>
+						<tr><td>Growth rate</td><td>N/A</td></tr>
+						<tr><td>Effective growth</td><td>N/A</td></tr>
+						<tr><td>Cell type</td><td>N/A</td></tr>
+						<tr><td>Cell adhesion</td><td>N/A</td></tr>
+						<tr><td>Volume</td><td>N/A</td></tr>
+						<tr><td>Start volume</td><td>N/A</td></tr>
+						<tr><td>Target volume</td><td>N/A</td></tr>
+						<tr><td>Strain rate</td><td>N/A</td></tr>
+					</tbody>
+				</table>
+			</div>
+			<div id="button-container" class="item-background force-input">
+				{% if is_dev_sim %}
+				<button id="recompile-btn">Compile</button>
+				<button id="reload-btn">Reload</button>
+				{% endif %}
+				<button id="stop-btn">Stop</button>
+			</div>
+			<div id="message-log-container" class="item-background force-input">
+				<div>
+					<p id="message-log-title">Initialization Log</p>
+					<textarea id="message-log-text" readonly></textarea>
+				</div>
+			</div>
+			
+		</div>
+	</div>
+</body>
+</html>

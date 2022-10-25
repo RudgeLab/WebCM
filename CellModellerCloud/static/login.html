@@ -1,0 +1,26 @@
+{% extends "background-wall.html" %}
+
+{% block header %}
+<script src="/static/scripts/login-script.js" type="module"></script>
+<link rel="stylesheet" href="/static/login-stylesheet.css"/>
+{% endblock %}
+
+{% block content %}
+<div id="main-container">
+    <div id="main-content">
+        <p class="header-title">Login as user</p>
+        <form id="login-form" action="" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="nextpage" value="{{request.GET.next}}">
+            
+            <label for="username">Username</label> 
+            <input type="text" placeholder="Username" id="login-username" name="username">
+
+            <label for="password">Password</label> 
+            <input type="password" placeholder="Password" id="login-password" name="password">
+
+            <button id="login-button">Log In</button>
+        </form>
+    </div>	
+</div>
+{% endblock %}

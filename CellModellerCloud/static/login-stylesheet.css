@@ -1,0 +1,90 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap");
+
+#main-container {
+	width: 100%;
+	height: 100%;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	font-family: "Poppins", sans-serif;
+}
+
+#main-content {
+	width: 28rem;
+	height: 30rem;
+	display: flex;
+	flex-direction: column;
+
+	background-color: white;
+	box-shadow: 0 0 8px 0 #888888;
+
+	padding: 2rem;
+	box-sizing: border-box;
+}
+
+.header-title {
+	font-weight: 500;
+	font-size: 2rem;
+
+	color: #444444;
+
+	margin: 0 0 0.3rem 0;
+}
+
+#login-form {
+	height: 100%;
+}
+
+#login-form label {
+	display: block;
+	margin-top: 1.8rem;
+	font-size: 1rem;
+	font-weight: 500;
+}
+
+#login-form input {
+	display: block;
+	width: 100%;
+	height: 3.125rem;
+
+	background-color: rgba(0, 0, 0, 0.07);
+	border: none;
+	border-radius: 3px;
+	outline: none;
+	box-sizing: border-box;
+
+	padding: 0 0.625rem;
+	margin-top: 0.5rem;
+
+	font-size: 0.875rem;
+	font-weight: 300;
+	letter-spacing: 0.5px;
+}
+
+#login-form button {
+	width: 100%;
+	
+	background-color: #78a483;
+	border: none;
+	border-radius: 5px;
+	outline: none;
+
+	margin-top: 3.125rem;
+	padding: 0.9rem 0;
+	
+	color: #ffffff;
+	font-size: 1.125rem;
+	font-weight: 600;
+
+	cursor: pointer;
+}
+
+#login-form button:hover {
+	background-color: #699174;
+}
+
+#login-form button:active {
+	background-color: #577960;
+}

@@ -1,0 +1,270 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap");
+
+p {
+	margin: 0;
+	padding: 0;
+}
+
+.row {
+	display: flex;
+	flex-direction: row;
+
+	align-items: center;
+}
+
+.row-fill {
+	display: flex;
+	flex-direction: row;
+
+	justify-content: stretch;
+	align-items: center;
+}
+
+.row-push {
+	display: flex;
+	flex-direction: row;
+
+	justify-content: space-between;
+	align-items: center;
+}
+
+.row-element {
+	width: 100%;
+	padding-bottom: 1rem;
+}
+
+.row-padding {
+	width: 1rem;
+}
+
+#content-root {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+    width: 100%;
+	height: 100%;
+
+	font-family: "Poppins", sans-serif;
+}
+
+#main-content {
+	display: flex;
+	flex-direction: column;
+
+	width: 40rem;
+	height: 40rem;
+
+	box-sizing: border-box;
+	box-shadow: 0 0 8px 0 #888888;
+
+	background-color: white;
+}
+
+#tab-container {
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+}
+
+.tab-item {
+	display: flex;
+	justify-content: center;
+
+	flex: 1;
+
+	padding: 1rem;
+}
+
+.hidden-tab {
+	background-color: #DDD;
+	border-bottom: 1px solid #BBB;
+	
+	cursor: pointer;
+}
+
+.hidden-tab:hover {
+	background-color: #CCC;
+}
+
+#tab-window {
+	position: relative;
+	flex: 1;
+}
+
+.tab-frame {
+	position: absolute;
+
+	left: 0;
+	right: 0;
+	width: 100%;
+	height: 100%;
+
+	box-sizing: border-box;
+}
+
+.inactive-frame {
+	display: none;
+}
+
+#sim-list {
+	display: block;
+}
+
+#create-sim-frame {
+	padding: 1rem;
+}
+
+#create-form-container {
+	width: 100%;
+	height: 100%;
+
+	display: flex;
+	flex-direction: column;
+}
+
+#create-form {
+	flex-grow: 1;
+}
+
+input[type="text"] {
+	display: block;
+	width: 100%;
+	height: 3.125rem;
+
+	background-color: rgba(0, 0, 0, 0.07);
+	border: none;
+	border-radius: 3px;
+	outline: none;
+	box-sizing: border-box;
+
+	padding: 0 0.625rem;
+	margin-top: 0.5rem;
+
+	font-size: 0.875rem;
+	font-weight: 300;
+	letter-spacing: 0.5px;
+}
+
+.radio-flip {
+	display: block;
+	width: 100%;
+	height: 3.125rem;
+
+	background-color: rgba(0, 0, 0, 0.07);
+	border: none;
+	border-radius: 3px;
+	outline: none;
+	box-sizing: border-box;
+
+	margin-top: 0.5rem;
+
+	font-size: 0.875rem;
+	font-weight: 300;
+	letter-spacing: 0.5px;
+
+	overflow: hidden;
+}
+
+.radio-flip div {
+	display: flex;
+	flex-direction: row;
+
+	width: 100%;
+	height: 100%;
+}
+
+.radio-flip div label {
+	flex-grow: 1;
+	cursor: pointer;
+}
+
+.radio-flip div label input[type="radio"] {
+	display: none;
+	left: 0;
+
+	padding: 0;
+	margin: 0;
+}
+
+.radio-flip div label input[type="radio"] + div {
+	justify-content: center;
+	align-items: center;
+
+	font-weight: 300;
+	font-size: 1rem;
+}
+
+.radio-flip div label input[type="radio"]:hover + div {
+	background-color: #DDD;
+}
+
+.radio-flip div label input[type="radio"]:checked + div {
+	background-color: #699174;
+}
+
+
+.submit-button {
+	width: 10rem;
+	
+	background-color: #78a483;
+	border: none;
+	border-radius: 4px;
+	outline: none;
+	text-align: center;
+
+	padding: 0.9rem 0;
+	
+	font-size: 1rem;
+	font-weight: 600;
+	color: black;
+
+	cursor: pointer;
+}
+
+.submit-button:hover {
+	background-color: #699174;
+}
+
+.submit-button:active {
+	background-color: #577960;
+}
+
+.plain-button {
+	width: 10rem;
+	
+	background-color: #DDD;
+	border: none;
+	border-radius: 4px;
+	outline: none;
+	text-align: center;
+
+	padding: 0.9rem 0;
+	
+	font-size: 1rem;
+	font-weight: 600;
+
+	cursor: pointer;
+}
+
+.plain-button:hover {
+	background-color: #CCC;
+}
+
+.plain-button:active {
+	background-color: #BBB;
+}
+
+#upload-file-name {
+	max-width: 15rem;
+	max-height: 4rem;
+	overflow: hidden;
+
+	margin-left: 0.5rem;
+	overflow-wrap: break-word;
+}
+
+.incorrect-field {
+	border: 1px solid red !important;
+	box-shadow: 0 0 2px 0.1px red;
+}
