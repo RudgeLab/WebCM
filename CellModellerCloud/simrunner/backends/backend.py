@@ -10,8 +10,6 @@ class BackendParameters:
 		self.sim_root_dir = None
 		self.cache_dir = None
 		self.cache_relative_prefix = None
-		self.backend_dir = None
-		self.backend_relative_prefix = None
 
 		self.backend_version = None
 

@@ -31,11 +31,7 @@ async function submitCreateRequest() {
     const simName = document.getElementById("input-create-name");
     const isVersionCM4 = document.getElementById("input-radio-cm4");
     const isVersionCM5 = document.getElementById("input-radio-cm5");
-    const checkoutRepo = document.getElementById("input-custom-checkout");
     const sourceUpload = document.getElementById("input-upload-file");
-    
-    const customGitUrl = document.getElementById("input-backend-git-repo");
-    const customBranch = document.getElementById("input-backend-git-branch");
 
     if (!isVersionCM4.checked && !isVersionCM5.checked) {
         alert("Hmmm... neither CM4 nor CM5 is selected. This shouldn't happen!");
@@ -46,11 +42,6 @@ async function submitCreateRequest() {
     invalid |= markAsError("input-create-name", simName.value == "");
     invalid |= markAsError("upload-button-text", sourceUpload.files.length == 0);
 
-    if (checkoutRepo.checked) {
-        invalid |= markAsError("input-backend-git-repo", customGitUrl.value == "");
-        invalid |= markAsError("input-backend-git-branch", customBranch.value == "");
-    }
-
     if (invalid) return;
 
     const name = simName.value;
@@ -58,14 +49,6 @@ async function submitCreateRequest() {
     const source = await sourceUpload.files[0].slice().text();
 
     let backend = version;
-
-    if (checkoutRepo.checked) {
-        backend = {
-            "version": version,
-            "url": customGitUrl.value,
-            "branch": customBranch.value,
-        };
-    }
 
     fetch("/api/simrunner/createnewsimulation", {
         method: "POST",
@@ -76,7 +59,7 @@ async function submitCreateRequest() {
         body: JSON.stringify({
             "name": name,
             "source": source,
-            "backend": backend,
+            "backend": backend
         })
     })
     .then(async response => {

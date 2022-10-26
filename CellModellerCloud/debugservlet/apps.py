@@ -103,9 +103,6 @@ def divide(parent, d1, d2):
 	params.sim_root_dir = paths.root_path
 	params.cache_dir = paths.cache_path
 	params.cache_relative_prefix = paths.relative_cache_path
-	params.backend_dir = paths.backend_path
-	params.backend_relative_prefix = paths.relative_backend_path
-
 	params.backend_version = sim_backend
 
 	# Spawn simulation

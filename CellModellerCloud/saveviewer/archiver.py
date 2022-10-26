@@ -7,8 +7,6 @@ class ArchivePaths:
 		self.root_path = None
 		self.cache_path = None
 		self.relative_cache_path = None
-		self.backend_path = None
-		self.relative_backend_path = None
 
 class SaveArchiver:
 	def __init__(self):
@@ -44,7 +42,7 @@ class SaveArchiver:
 			master_file.write(json.dumps(self.master_data))
 			master_file.truncate()
 
-	def register_simulation(self, uuid: str, path: str, name: str, create_backend_dir: bool, extra_init_vars: object=None):
+	def register_simulation(self, uuid: str, path: str, name: str, version: str):
 		self.master_data["saved_simulations"][uuid] = path
 		self.update_master_file()
 
@@ -53,20 +51,17 @@ class SaveArchiver:
 		relative_cache_path = "./cache"
 		cache_path = os.path.join(root_path, relative_cache_path)
 
-		relative_backend_path = "./backend"
-		backend_path = os.path.join(root_path, relative_backend_path)
-
 		os.mkdir(root_path)
 		os.mkdir(cache_path)
 
-		if create_backend_dir:
-			os.mkdir(backend_path)
+		self.sim_data[uuid] = {
+			"vizframes": {},
+			"stepframes": {},
+			"name": name,
+			"num_frames": 0,
+			"backend_version": version
+		}
 
-		self.sim_data[uuid] = { "vizframes": {}, "stepframes": {}, "name": name, "num_frames": 0 }
-
-		if not extra_init_vars is None:
-			self.sim_data[uuid].update(extra_init_vars)
-		
 		with open(os.path.join(root_path, "index.json"), "w+") as index_file:
 			index_file.seek(0)
 			index_file.write(json.dumps(self.sim_data[uuid]))
@@ -76,13 +71,6 @@ class SaveArchiver:
 		paths.root_path = root_path
 		paths.cache_path = cache_path
 		paths.relative_cache_path = relative_cache_path
-
-		if create_backend_dir:
-			paths.backend_path = backend_path
-			paths.relative_backend_path = relative_backend_path
-		else:
-			paths.backend_path = None
-			paths.relative_backend_path = None
 
 		return paths
 

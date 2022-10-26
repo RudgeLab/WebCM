@@ -1,3 +1,2 @@
 django
 channels
-GitPython

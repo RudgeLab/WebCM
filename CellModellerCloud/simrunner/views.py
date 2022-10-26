@@ -1,7 +1,7 @@
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 
-from .instances.manager import spawn_simulation, spawn_simulation_from_branch, kill_simulation
+from .instances.manager import spawn_simulation, kill_simulation
 from .instances.simprocess import SimulationProcess
 from .backends.backend import BackendParameters
 
@@ -34,18 +34,18 @@ def create_new_simulation(request):
 	if sim_source is None: return HttpResponseBadRequest("Simulation source not provided")
 	if sim_backend is None: return HttpResponseBadRequest("Simulation backend not specified")
 
+	if not type(sim_backend) is str: return HttpResponseBadRequest(f"Invalid backend data type: {type(sim_backend)}")
+
 	# Register simulation
 	params = BackendParameters()
 	params.uuid = sim_uuid
 	params.name = sim_name
 	params.source = sim_source
 	
-	use_custom_backend = type(sim_backend) is dict
 	id_str = str(sim_uuid)
 
 	try:
-		extra_vars = { "backend_version": sim_backend }
-		paths = sv_archiver.get_save_archiver().register_simulation(id_str, f"./{id_str}", sim_name, use_custom_backend, extra_init_vars=extra_vars)
+		paths = sv_archiver.get_save_archiver().register_simulation(id_str, f"./{id_str}", sim_name, sim_backend)
 	except Exception as e:
 		traceback.print_exc()
 		return HttpResponseBadRequest(str(e))
@@ -53,24 +53,11 @@ def create_new_simulation(request):
 	params.sim_root_dir = paths.root_path
 	params.cache_dir = paths.cache_path
 	params.cache_relative_prefix = paths.relative_cache_path
-	params.backend_dir = paths.backend_path
-	params.backend_relative_prefix = paths.relative_backend_path
-
-	# Download backend
 	params.backend_version = sim_backend
 
 	print(f"[SIMULATION RUNNER]: Creating new simulation: {id_str}")
 	
-	if use_custom_backend:
-		if not "url" in sim_backend: return HttpResponseBadRequest("Backend URL not provided")
-		if not "branch" in sim_backend: return HttpResponseBadRequest("Backend branch not provided")
-		if not "version" in sim_backend: return HttpResponseBadRequest("Backend version not provided")
-		
-		spawn_simulation_from_branch(id_str, sim_backend["url"], sim_backend["branch"], paths.backend_path, proc_class=SimulationProcess, proc_args=(params,))
-	elif type(sim_backend) is str:
-		spawn_simulation(id_str, proc_class=SimulationProcess, proc_args=(params,))
-	else:
-		return HttpResponseBadRequest(f"Invalid backend data type: {type(sim_backend)}")
+	spawn_simulation(id_str, proc_class=SimulationProcess, proc_args=(params,))
 
 	return HttpResponse(id_str)
 

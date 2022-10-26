@@ -16,28 +16,12 @@ class CellModeller4Backend(SimulationBackend):
 		self.simulation = None
 	
 	def initialize(self):
-		# Load module
-		simulator_class = None
-
-		if type(self.params.backend_version) is str:
-			# We cannot import CellModeller the traditional way because we want the users to be able to run
-			# the server even if they don't have all the versions of CellModeller installed.
-			module = importlib.import_module("CellModeller.Simulator")
-			simulator_class = module.Simulator
-		else:
-			# NOTE(Jason): If we were to import the source directory (i.e. 'CellModeller/'), importlib won't import
-			# anything. I'm guessing this is because '__init__.py' is empty. To solve this, we can import 'Simulator.py'
-			# directly. I'm not sure how correct this is.
-			simulator_path = os.path.join(self.params.backend_dir, "CellModeller", "Simulator.py")
-
-			spec = importlib.util.spec_from_file_location("CellModeller.Simulator", simulator_path)
-			module = importlib.util.module_from_spec(spec)
-			spec.loader.exec_module(module)
-
-			simulator_class = module.Simulator
+		# We cannot import CellModeller the traditional way because we want the users to be able to run
+		# the server even if they don't have all the versions of CellModeller installed.
+		module = importlib.import_module("CellModeller.Simulator")
 
 		# Setup simulator properties
-		self.simulation = simulator_class(self.params.name, self.params.delta_time, moduleStr=self.params.source, clPlatformNum=0, clDeviceNum=0, is_gui=False, saveOutput=False)
+		self.simulation = module.Simulator(self.params.name, self.params.delta_time, moduleStr=self.params.source, clPlatformNum=0, clDeviceNum=0, is_gui=False, saveOutput=False)
 		self.simulation.outputDirPath = self.params.sim_root_dir
 
 		if self.simulation.moduleStr:
