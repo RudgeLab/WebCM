@@ -46,7 +46,7 @@ def cell_info_from_index(request):
 	cell_data = frame_reader.find_cell_with_id(int(cellid))
 
 	data = {
-		"Inde": cell_data.id,
+		"Cell Id": cell_data.id,
 		"Radius": cell_data.radius,
 		"Length": cell_data.length,
 		"Growth rate": cell_data.growth_rate,
