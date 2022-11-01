@@ -1,5 +1,5 @@
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed
-from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 
 from .instances.manager import spawn_simulation, kill_simulation
 from .instances.simprocess import SimulationProcess
@@ -11,7 +11,7 @@ import json
 import uuid
 import traceback
 
-@csrf_exempt
+@login_required
 def create_new_simulation(request):
 	# This needs to be a POST request since this method is not idempotent
 	if request.method != "POST":
@@ -56,12 +56,12 @@ def create_new_simulation(request):
 	params.backend_version = sim_backend
 
 	print(f"[SIMULATION RUNNER]: Creating new simulation: {id_str}")
-	
+
 	spawn_simulation(id_str, proc_class=SimulationProcess, proc_args=(params,))
 
 	return HttpResponse(id_str)
 
-@csrf_exempt
+@login_required
 def stop_simulation(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")

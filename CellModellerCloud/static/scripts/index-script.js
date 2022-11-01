@@ -48,18 +48,19 @@ async function submitCreateRequest() {
     const version = isVersionCM5.checked ? "CellModeller5" : "CellModeller4";
     const source = await sourceUpload.files[0].slice().text();
 
-    let backend = version;
+    const csrfToken = document.querySelector("#create-form input[name='csrfmiddlewaretoken']");
 
     fetch("/api/simrunner/createnewsimulation", {
         method: "POST",
         headers: {
             "Accept": "text/plain",
             "Content-Type": "text/plain",
+            "X-CSRFToken": csrfToken.value,
         },
         body: JSON.stringify({
             "name": name,
             "source": source,
-            "backend": backend
+            "backend": version
         })
     })
     .then(async response => {

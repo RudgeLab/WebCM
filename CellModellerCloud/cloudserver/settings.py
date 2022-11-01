@@ -35,6 +35,7 @@ SITE_ID = 1
 # Application definition
 
 INSTALLED_APPS = [
+    'cloudserver.apps.MainAppConfig',
     'saveviewer.apps.SaveViewerConfig',
     'simrunner.apps.SimRunnerConfig',
     'userauth.apps.UserAuthConfig',
