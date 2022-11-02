@@ -58,7 +58,7 @@ async function requestFrame(context, uuid, index) {
 	setSimFrame(index + 1, context["simInfo"].frameCount);
 
 	//Update UI
-	const [ cellCount ] = render.pushFrameData(context["gl"], context, frameBuffer)
+	const [ cellCount ] = render.pushFrameData(context["graphics"]["gl"], context, frameBuffer)
 
 	//Update the cell index based on the identifier
 	if (context["selectedCellIndex"] >= 0) {
@@ -449,11 +449,14 @@ function drawScene(gl, context, delta) {
 }
 
 function resizeCanvas(gl, context, canvas) {
-	canvas.width = canvas.clientWidth;
-	canvas.height = canvas.clientHeight;
+	const canvasWidth = context["graphics"]["currentWidth"];
+	const canvasHeight = context["graphics"]["currentHeight"];
 
-	context["camera"]["width"] = canvas.clientWidth;
-	context["camera"]["height"] = canvas.clientHeight;
+	canvas.width = canvasWidth;
+	canvas.height = canvasHeight;
+
+	context["camera"]["width"] = canvasWidth;
+	context["camera"]["height"] = canvasHeight;
 
 	render.resize(gl, context, canvas);
 }
@@ -529,7 +532,7 @@ function processMouseButton(event, context, isdown) {
 	}
 
 	if (isdown) {
-		context["canvasElement"].focus();
+		context["graphics"]["canvas"].focus();
 	}
 }
 
@@ -546,9 +549,51 @@ function processMouseWheel(event, context) {
 	camera["orbitRadius"] = radius;
 }
 
+function attachResizeBehavior(context, canvas) {
+	//Define resize callback
+	function onCanvasResize(entries) {
+		//Look at: https://webgl2fundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+		const entry = entries[0];
+
+		let width = 0, height = 0, dpr = 1;
+		if (entry.devicePixelContentBoxSize) {
+			//This is the only path that gives a correct answer, all the
+			//other ones are inaccurate
+			width = entry.devicePixelContentBoxSize[0].inlineSize;
+			height = entry.devicePixelContentBoxSize[0].blockSize;
+		} else if (entry.contentBoxSize) {
+			if (entry.contentBoxSize[0]) {
+				width = entry.contentBoxSize[0].inlineSize;
+				height = entry.contentBoxSize[0].blockSize;
+			} else {
+				width = entry.contentBoxSize.inlineSize;
+				height = entry.contentBoxSize.blockSize;
+			}
+
+			dpr = window.devicePixelRatio;
+		} else {
+			width = entry.contentRect.width;
+			height = entry.contentRect.height;
+			dpr = window.devicePixelRatio;
+		}
+		
+		context["graphics"]["targetWidth"] = Math.round(width * dpr);
+		context["graphics"]["targetHeight"] = Math.round(height * dpr);
+	}
+
+	//Observe resize behavior
+	const resizeObserver = new ResizeObserver(onCanvasResize);
+
+	try {
+		resizeObserver.observe(canvas, {box: "device-pixel-content-box"});
+	} catch (ex) {
+		resizeObserver.observe(canvas, {box: "content-box"});
+	}
+}
+
 async function main() {
 	//Create canvas
-	var canvas = document.getElementById("renderTargetCanvas");
+	const canvas = document.getElementById("renderTargetCanvas");
 	const gl = canvas.getContext("webgl2", {antialias: false});
 	
 	if (gl === null) {
@@ -557,10 +602,23 @@ async function main() {
 	}
 
 	canvas.focus();
-	
-	var context = { "canvasElement": canvas, "gl": gl };
+
+	let context = {
+		"graphics": {
+			"canvas": canvas,
+			"gl": gl,
+
+			"currentWidth": canvas.clientWidth,
+			"currentHeight": canvas.clientHeight,
+			"targetWidth": canvas.clientWidth,
+			"targetHeight": canvas.clientHeight,
+		},
+	};
+
 	await initFrame(gl, context);
 	resizeCanvas(gl, context, canvas);
+	
+	attachResizeBehavior(context, canvas);
 
 	canvas.addEventListener("mousemove", e => processMouseMove(e, context));
 	canvas.addEventListener("mousedown", e => processMouseButton(e, context, true));
@@ -575,10 +633,18 @@ async function main() {
 
 	function render(now) {
 		//Check if a resize is needed
-		if (canvas.width  !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+		const graphics = context["graphics"];
+
+		if (graphics["currentWidth"] !== graphics["targetWidth"] ||
+			graphics["currentHeight"] !== graphics["targetHeight"])
+		{
+			graphics["currentWidth"] = graphics["targetWidth"];
+			graphics["currentHeight"] = graphics["targetHeight"];
+
 			resizeCanvas(gl, context, canvas);
 		}
 
+		//Update frame
 		const delta = (now - lastTime) * 0.001;
 		lastTime = now;
 
