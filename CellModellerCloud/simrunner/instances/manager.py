@@ -1,8 +1,9 @@
 import threading
 
-from simrunner import websocket_groups as wsgroups
+from simrunner.instances.siminstance import SimulationInstance
 
-from .siminstance import ClientAction, ClientMessage
+from saveviewer import archiver
+from uuid import UUID
 
 # NOTE(Jason): Yes, I know that globals are considered bad practice, but I couldn't find another way to do it.
 # This isn't "just some data that you can save in a database", so all solutions that invlove persistent
@@ -12,19 +13,24 @@ from .siminstance import ClientAction, ClientMessage
 global__active_instances = {}
 global__instance_lock = threading.Lock()
 
-def spawn_simulation(uuid: str, proc_class: type, proc_args: tuple=None, should_create_ws_group: bool=True):
+def create_simulation(user, sim_title, sim_desc, sim_source, sim_version):
 	global global__active_instances
 	global global__instance_lock
 
-	if should_create_ws_group:
-		wsgroups.create_websocket_group(f"simcomms/{uuid}")
+	sim_entry = archiver.register_simulation(user, sim_title, sim_desc)
+	sim_uuid = sim_entry.uuid
 
 	with global__instance_lock:
-		global__active_instances[uuid] = proc_class() if proc_args is None else proc_class(*proc_args)
+		sim_instance = SimulationInstance(sim_uuid, sim_version, sim_source, sim_entry.save_location)
+		sim_instance.launch()
 
-	return
+		global__active_instances[sim_uuid] = sim_instance
 
-def kill_simulation(uuid: str, remove_only=False):
+	return sim_uuid
+
+def kill_simulation(uuid):
+	assert type(uuid) is UUID
+
 	global global__active_instances
 	global global__instance_lock
 
@@ -34,16 +40,13 @@ def kill_simulation(uuid: str, remove_only=False):
 		if sim_instance is None:
 			return False
 		
-		if not remove_only:
-			print(f"[Simulation Runner]: Stopping simulation '{uuid}'")
-
-			sim_instance.close()
-
-	wsgroups.close_websocket_group(f"simcomms/{uuid}")
+		sim_instance.close()
 
 	return True
 
-def is_simulation_running(uuid: str):
+def is_simulation_running(uuid):
+	assert type(uuid) is UUID
+
 	global global__active_instances
 	global global__instance_lock
 
@@ -54,7 +57,9 @@ def is_simulation_running(uuid: str):
 		process = global__active_instances[uuid]
 		return not process.is_closed() if not process is None else True
 
-def send_message_to_simulation(uuid: str, message):
+def reload_simulation(uuid: str):
+	assert type(uuid) is UUID
+
 	global global__active_instances
 	global global__instance_lock
 
@@ -66,4 +71,4 @@ def send_message_to_simulation(uuid: str, message):
 	with global__instance_lock:
 		sim_instance = global__active_instances[uuid]
 	
-	sim_instance.send_item_to_instance(message)
+	sim_instance.reload_simulation()

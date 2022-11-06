@@ -1,7 +1,9 @@
 from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, HttpResponseNotFound
 
-from . import archiver as sv_archiver
-from .format import PackedCellReader
+from saveviewer import archiver
+from saveviewer.format import PackedCellReader
+
+from uuid import UUID
 
 import json
 
@@ -16,9 +18,9 @@ def frame_data(request):
 	sim_id = request.GET["uuid"]
 	index = request.GET["index"]
 
-	selected_frame = sv_archiver.get_save_archiver().get_sim_bin_file(sim_id, index)
+	(step_file, viz_file) = archiver.get_simulation_step_files(UUID(sim_id), index)
 
-	response = FileResponse(open(selected_frame, "rb"))
+	response = FileResponse(open(viz_file, "rb"))
 	response["Content-Encoding"] = "deflate"
 
 	return response
@@ -38,9 +40,9 @@ def cell_info_from_index(request):
 	frameindex = request.GET["frameindex"]
 	cellid = request.GET["cellid"]
 
-	selected_frame = sv_archiver.get_save_archiver().get_sim_step_file(sim_id, frameindex)
+	(step_file, viz_file) = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
 
-	with open(selected_frame, "rb") as frame_file:
+	with open(step_file, "rb") as frame_file:
 		frame_reader = PackedCellReader(frame_file)
 
 	cell_data = frame_reader.find_cell_with_id(int(cellid))

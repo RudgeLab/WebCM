@@ -2,100 +2,99 @@ import os
 import json
 import pathlib
 
-class ArchivePaths:
-	def __init__(self):
-		self.root_path = None
-		self.cache_path = None
-		self.relative_cache_path = None
+from uuid import UUID, uuid4
 
 class SaveArchiver:
 	def __init__(self):
 		self.archive_root = "./save-archive/"
-		self.master_path = os.path.join(self.archive_root, "index.json")
 		self.sim_data = {}
 
-		pathlib.Path(self.archive_root).mkdir(parents=False, exist_ok=True)
+global__archiver = SaveArchiver()
 
-		# We may want to move the index file to a database
-		if not os.path.exists(self.master_path):
-			with open(self.master_path, "w") as master_file:
-				master_file.write("{ \"saved_simulations\": {} }")
+def initialize_save_archiver():
+	global global__archiver
 
-		with open(self.master_path, "r") as master_file:
-			self.master_data = json.loads(master_file.read())
+	# Create the root directory
+	pathlib.Path(global__archiver.archive_root).mkdir(parents=False, exist_ok=True)
 
-		for uuid, relative_path in self.master_data["saved_simulations"].items():
-			index_path = os.path.join(self.archive_root, relative_path, "index.json")
+	# We don't want to import this globally because it causes problems
+	# when the archiver is imported from the simulation instance process
+	from cloudserver.models import SimulationEntry
 
-			if not os.path.isfile(index_path):
-				print(f"Could not find simulation: {uuid}")
-				continue
+	global__archiver.sim_data = {}
 
-			with open(index_path, "r") as index_file:
-				self.sim_data[str(uuid)] = json.loads(index_file.read())
+	for sim in SimulationEntry.objects.all():
+		index_path = os.path.join(sim.save_location, "index.json")
 
-		return
+		with open(index_path, "r") as index_file:
+			index_data = json.loads(index_file.read())
 
-	def update_master_file(self):
-		with open(self.master_path, "w") as master_file:
-			master_file.seek(0)
-			master_file.write(json.dumps(self.master_data))
-			master_file.truncate()
+		global__archiver.sim_data[sim.uuid] = index_data
 
-	def register_simulation(self, uuid: str, path: str, name: str, version: str):
-		self.master_data["saved_simulations"][uuid] = path
-		self.update_master_file()
+	return
 
-		root_path = os.path.join(self.archive_root, path)
+def register_simulation(user, sim_title, sim_desc):
+	from cloudserver.models import SimulationEntry
 
-		relative_cache_path = "./cache"
-		cache_path = os.path.join(root_path, relative_cache_path)
+	global global__archiver
 
-		os.mkdir(root_path)
-		os.mkdir(cache_path)
+	sim_uuid = uuid4()
+	save_dir = os.path.join(global__archiver.archive_root, str(sim_uuid))
 
-		self.sim_data[uuid] = {
-			"vizframes": {},
-			"stepframes": {},
-			"name": name,
-			"num_frames": 0,
-			"backend_version": version
-		}
+	entry = SimulationEntry(owner=user, title=sim_title, description=sim_desc, uuid=sim_uuid, save_location=save_dir)
+	entry.save()
 
-		with open(os.path.join(root_path, "index.json"), "w+") as index_file:
-			index_file.seek(0)
-			index_file.write(json.dumps(self.sim_data[uuid]))
-			index_file.truncate()
+	os.mkdir(save_dir)
 
-		paths = ArchivePaths()
-		paths.root_path = root_path
-		paths.cache_path = cache_path
-		paths.relative_cache_path = relative_cache_path
+	return entry
 
-		return paths
+def get_simulation(id):
+	from cloudserver.models import SimulationEntry
+	
+	try:
+		return SimulationEntry.objects.get(uuid=id)
+	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+		return None
 
-	def update_step_data(self, uuid: str, step_data: object):
-		self.sim_data[uuid] = step_data
+def update_instance_index(uuid, data):
+	global global__archiver
 
-	def get_all_sim_data(self):
-		return self.sim_data
+	if data is str:
+		raise Exception("Instance data must be a dictionary, not a string")
 
-	def get_sim_index_data(self, uuid: str):
-		return self.sim_data[uuid]
+	global__archiver.sim_data[uuid] = data
 
-	def get_sim_step_file(self, uuid: str, index: int):
-		simulation_root = self.master_data["saved_simulations"][uuid]
-		frame_relative_path = self.sim_data[uuid]["stepframes"][index]
+def get_instance_index_data(uuid):
+	assert type(uuid) is UUID
 
-		return os.path.join(self.archive_root, simulation_root, frame_relative_path)
+	global global__archiver
+	return global__archiver.sim_data[uuid]
 
-	def get_sim_bin_file(self, uuid: str, index: int):
-		simulation_root = self.master_data["saved_simulations"][uuid]
-		frame_relative_path = self.sim_data[uuid]["vizframes"][index]
+def get_simulation_step_files(uuid, index):
+	simulation = get_simulation(uuid)
+	index_data = get_instance_index_data(uuid)
 
-		return os.path.join(self.archive_root, simulation_root, frame_relative_path)
+	step_frame = os.path.join(simulation.save_location, index_data["stepframes"][index])
+	viz_frame = os.path.join(simulation.save_location, index_data["vizframes"][index])
 
-def add_entry_to_sim_index(index_path, step_file: str, viz_bin_file: str):
+	return (step_frame, viz_frame)
+
+def write_empty_index_file(path, backend_version):
+	init_index_data = {
+		"vizframes": {},
+		"stepframes": {},
+		"num_frames": 0,
+		"backend_version": backend_version
+	}
+
+	sim_data_str = json.dumps(init_index_data)
+
+	with open(path, "w") as indexfile:
+		indexfile.write(sim_data_str)
+
+	return init_index_data
+
+def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
 	with open(index_path, "r+") as index_file:
 		sim_data = json.loads(index_file.read())
 
@@ -110,10 +109,4 @@ def add_entry_to_sim_index(index_path, step_file: str, viz_bin_file: str):
 		index_file.write(sim_data_str)
 		index_file.truncate()
 
-	return (sim_data_str, frame_count)
-
-global__save_archiver = SaveArchiver()
-
-def get_save_archiver():
-	global global__save_archiver
-	return global__save_archiver
+	return (sim_data, frame_count)

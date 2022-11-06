@@ -134,8 +134,6 @@ function connectToServer(context) {
 				context["simInfo"].frameCount = frameCount;
 				context["timelineSlider"].max = frameCount;
 
-				setSimFrame(context["simInfo"].frameIndex, frameCount);
-
 				if (context["alwaysUseLatestStep"] && frameCount > 0) {
 					requestFrame(context, context["simUUID"], frameCount - 1);
 
@@ -174,9 +172,9 @@ function recompileDevSimulation(context) {
 	}
 }
 
-function reloadDevSimulation(context) {
+function reloadSimulation(context) {
 	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "devreload", "data": "" }));
+		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
 
 		setStatusMessage("Reloading");
 	}
@@ -407,11 +405,9 @@ async function initFrame(gl, context) {
 	//Setup reload buttons
 	const recompileBtn = document.getElementById("recompile-btn");
 	if (recompileBtn !== null) recompileBtn.onclick = function(event) { recompileDevSimulation(context); };
-
-	const reloadBtn = document.getElementById("reload-btn");
-	if (reloadBtn !== null) reloadBtn.onclick = function(event) { reloadDevSimulation(context); };
-
+	
 	//Setup buttons
+	document.getElementById("reload-btn").onclick = function(event) { reloadSimulation(context); };
 	document.getElementById("stop-btn").onclick = function(event) { stopSimulation(context); };
 	document.getElementById("thin-cell-outlines").onchange = function(event) { context["useThinOutlines"] = this.checked; };
 	

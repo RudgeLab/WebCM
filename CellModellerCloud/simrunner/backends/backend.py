@@ -2,7 +2,6 @@ import zlib
 
 class BackendParameters:
 	def __init__(self):
-		self.uuid = None
 		self.name = ""
 		self.source = ""
 		self.delta_time = 0.05
@@ -10,8 +9,6 @@ class BackendParameters:
 		self.sim_root_dir = None
 		self.cache_dir = None
 		self.cache_relative_prefix = None
-
-		self.backend_version = None
 
 class SimulationBackend:
 	STEP_COMPRESSION_LEVEL_ZLIB = 2

@@ -1,7 +1,10 @@
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseNotFound
 from django.template import Context, RequestContext, Template
 
 from django.contrib.auth.decorators import login_required
+
+from saveviewer import archiver
+from uuid import UUID
 
 @login_required
 def home(request):
@@ -17,12 +20,15 @@ def home(request):
 
 @login_required
 def viewer(request, sim_uuid):
+    if archiver.get_simulation(UUID(sim_uuid)) is None:
+        return HttpResponseNotFound(f"Simulation '{sim_uuid}' does not exist")
+
     index_data = ""
 
     with open("static/viewer.html", "r") as index_file:
         index_data = index_file.read()
 
-    context = Context({ "simulation_uuid": sim_uuid, "is_dev_sim": False })
+    context = Context({ "simulation_uuid": sim_uuid })
     content = Template(index_data).render(context)
 
     return HttpResponse(content)

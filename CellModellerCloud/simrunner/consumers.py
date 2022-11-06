@@ -1,12 +1,14 @@
-from multiprocessing.connection import Client
 from channels.generic.websocket import WebsocketConsumer
+
+from saveviewer import archiver
+
+from simrunner import websocket_groups as wsgroups
+from simrunner.instances import clientmessages
+from simrunner.instances import manager
+
+from uuid import UUID
+
 import json
-
-from saveviewer import archiver as sv_archiver
-
-from . import websocket_groups as wsgroups
-from .instances.manager import is_simulation_running, send_message_to_simulation, kill_simulation
-from .instances.siminstance import ClientAction, ClientMessage
 
 class UserCommsConsumer(WebsocketConsumer):
 	def __init__(self, custom_action_callback=None, *args, **kwargs):
@@ -20,15 +22,15 @@ class UserCommsConsumer(WebsocketConsumer):
 
 	def receive(self, text_data):
 		msg_data = json.loads(text_data)
-
+		
 		if msg_data["action"] == "connectto":
-			all_sims = sv_archiver.get_save_archiver().get_all_sim_data()
+			uuid = UUID(msg_data["data"])
 
-			if msg_data["data"] in all_sims:
+			if not archiver.get_simulation(uuid) is None:
 				if not self.sim_uuid == None:
 					wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
 
-				self.sim_uuid = msg_data["data"]
+				self.sim_uuid = uuid
 
 				wsgroups.add_websocket_to_group(f"simcomms/{self.sim_uuid}", self)
 
@@ -38,45 +40,34 @@ class UserCommsConsumer(WebsocketConsumer):
 		elif msg_data["action"] == "getheader":
 			self.send_sim_header()
 		elif msg_data["action"] == "stop":
-			kill_simulation(self.sim_uuid)
-		elif msg_data["action"] == "msgtoinstance":
-			send_message_to_simulation(self.sim_uuid, msg_data["data"])
-		elif not self.custom_action_callback == None:
-			self.custom_action_callback(msg_data["action"], msg_data["data"], self)
+			manager.kill_simulation(self.sim_uuid)
+		elif msg_data["action"] == "reload":
+			manager.reload_simulation(self.sim_uuid)
 
 		return
 
 	def send_sim_header(self):
-		archiver = sv_archiver.get_save_archiver()
-
-		sim_data = archiver.get_sim_index_data(self.sim_uuid)
-		is_online = is_simulation_running(self.sim_uuid)
+		simulation = archiver.get_simulation(self.sim_uuid)
+		index_data = archiver.get_instance_index_data(self.sim_uuid)
+		is_online = manager.is_simulation_running(self.sim_uuid)
 
 		response_data = {
-			"uuid": self.sim_uuid,
-			"name": sim_data["name"],
-			"frameCount": sim_data["num_frames"],
+			"uuid": str(simulation.uuid),
+			"name": simulation.title,
+			"frameCount": index_data["num_frames"],
 			"isOnline": is_online
 		}
 
-		self.send_client_message(ClientMessage(ClientAction.SIM_HEADER, response_data))
+		self.send_message_data("simheader", response_data)
 
 	def send_client_message(self, message):
-		action_names = {
-			ClientAction.NEW_FRAME: "newframe",
-			ClientAction.SIM_HEADER: "simheader",
-			ClientAction.ERROR_MESSAGE: "error_message",
-			ClientAction.INFO_LOG: "infolog",
-			ClientAction.CLOSE_INFO_LOG: "closeinfolog",
-			ClientAction.RELOAD_DONE: "reloaddone",
-			ClientAction.SIM_STOPPED: "simstopped",
-		}
+		if type(message) == clientmessages.NewFrame:
+			self.send_message_data("newframe", { "frameCount": message.frame_count })
+		elif type(message) == clientmessages.ErrorMessage:
+			self.send_message_data("error_message", message.message)
 
-		data = {} if message.data is None else message.data
-
-		message_json = { "action": action_names[message.action], "data": data }
-		self.send(text_data=json.dumps(message_json))
+	def send_message_data(self, action, data):
+		self.send(text_data=json.dumps({ "action": action, "data": data }))
 
 	def on_websocket_group_closed(self):
-		self.send_client_message(ClientMessage(ClientAction.SIM_STOPPED, None))
-		
+		self.send_message_data("simstopped", "")
