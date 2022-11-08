@@ -75,7 +75,7 @@ async function submitCreateRequest() {
     });
 }
 
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
     setupTabs();
 
     const sourceUpload = document.getElementById("input-upload-file");
@@ -90,4 +90,25 @@ window.addEventListener("load", () => {
 
     const createButton = document.getElementById("create-button");
     createButton.onclick = (e) => submitCreateRequest();
+
+    const simListResponse = await fetch(`/api/listsimualtions/`);
+    const simList = await simListResponse.json();
+
+    const simItemContainer = document.getElementById("select-sim-item-container");
+    simItemContainer.innerHTML = "";
+
+    for (let sim of simList) {
+        const statusText = sim.isOnline ? "Online" : "Offline";
+
+        simItemContainer.innerHTML +=
+`<div class="select-sim-item">
+    <div class="select-sim-labels">
+        <p>${sim.title}</p>
+        <p>${statusText}</p>
+    </div>
+    <a href="/view/${sim.uuid}/" target="_blank">
+        <span class="select-sim-button"><span></span></span>
+    </a>
+</div>`;
+    }
 });

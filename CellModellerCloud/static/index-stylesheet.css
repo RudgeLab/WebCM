@@ -104,7 +104,7 @@ p {
 }
 
 .inactive-frame {
-	display: none;
+	display: none !important;
 }
 
 #sim-list {
@@ -267,4 +267,80 @@ input[type="text"] {
 .incorrect-field {
 	border: 1px solid red !important;
 	box-shadow: 0 0 2px 0.1px red;
+}
+
+#select-sim-frame {
+	display: flex;
+	flex-direction: column;
+
+	padding: 1rem;
+}
+
+#select-sim-item-container {
+	width: 100%;
+	height: 100%;
+
+	border: solid #aaa 1px;
+	background-color: #ddd;
+	overflow: auto;
+}
+
+.select-sim-item {
+	display: flex;
+	flex-direction: row;
+
+	margin: 0.5rem;
+	padding: 0.7rem;
+	border-radius: 3px;
+	box-shadow: 0 0 4px 1px #ccc;
+
+	background-color: #fff;
+}
+
+.select-sim-item div {
+	flex: 1;
+	height: 3rem;
+}
+
+.select-sim-item a {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.select-sim-labels p:nth-child(1) {
+	font-size: 1.1rem;
+}
+
+.select-sim-labels p:nth-child(2) {
+	font-weight: 100;
+	font-size: 0.9rem;
+	line-height: 0.9rem;
+}
+
+.select-sim-button {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	width: 2rem;
+	height: 2rem;
+
+	background-color: #78a483;
+	border-radius: 0.2rem;
+	box-shadow: 0 0 2px 0 #60866a;
+
+	cursor: pointer;
+}
+
+.select-sim-button span { 
+	display: inline-block;
+	width: 0.5rem;
+	height: 0.5rem;
+
+	transform: rotate(-45deg) translateX(-0.1rem);
+	-webkit-transform: rotate(-45deg) translateX(-0.1rem);
+
+	border: solid black;
+	border-width: 0 3px 3px 0;
 }

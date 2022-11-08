@@ -7,68 +7,70 @@
 
 {% block content %}
 <div id="content-root">
-    <div id="main-content">
-        <div id="tab-container">
-            <div class="tab-item hidden-tab">
-                <p>Select Simulation</p>
-            </div>
-            <div class="tab-item">
-                <p>Create Simulation</p>
-            </div>
-            <div class="tab-item hidden-tab">
-                <p>User Account</p>
-            </div>
-        </div>
-        <div id="tab-window">
-            <div class="tab-frame inactive-frame">
-                
-            </div>
-            <div id="create-sim-frame" class="tab-frame">
-                <div id="create-form-container">
-                    <div id="create-form">
-                        {% csrf_token %}
-    
-                        <div class="row-fill">
-                            <div class="row-element">
-                                <label for="name">Simulation Name</label> 
-                                <input type="text" placeholder="Simulation Name" id="input-create-name" name="name">
-                            </div>
-                            <div class="row-element row-padding"></div>
-                            <div class="row-element">
-                                <label>Backend Version</label> 
-                                <form class="radio-flip">
-                                    <div>
-                                        <label for="input-radio-cm4">
-                                            <input id="input-radio-cm4" class="" type="radio" name="version" value="CellModeller4" checked>
-                                            <div>CellModeller4</div>
-                                        </label>
-                                        <label for="input-radio-cm5">
-                                            <input id="input-radio-cm5" class="" type="radio" name="version" value="CellModeller5">
-                                            <div>CellModeller5</div>
-                                        </label>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                        
-                    </div>
-    
-                    <div class="row-push">
-                        <div class="row">
-                            <label for="input-upload-file">
-                                <input type="file" name="upload-file" id="input-upload-file" style="display: none;" accept=".txt,.py">
-                                <div id="upload-button-text" class="plain-button">Upload Source</div>
-                            </label>
-                            <div id="upload-file-name"></div>
-                        </div>
-                        <button id="create-button" class="submit-button">Create Simulation</button>
-                    </div>
-                </div>
-            </div>
-            <div class="tab-frame inactive-frame">
-            
-            </div>
-        </div>
-    </div>
+	<div id="main-content">
+		<div id="tab-container">
+			<div class="tab-item">
+				<p>Select Simulation</p>
+			</div>
+			<div class="tab-item hidden-tab">
+				<p>Create Simulation</p>
+			</div>
+			<div class="tab-item hidden-tab">
+				<p>User Account</p>
+			</div>
+		</div>
+		<div id="tab-window">
+			<div class="tab-frame" id="select-sim-frame">
+				<div id="select-sim-item-container">
+
+				</div>
+			</div>
+			<div class="tab-frame inactive-frame" id="create-sim-frame">
+				<div id="create-form-container">
+					<div id="create-form">
+						{% csrf_token %}
+	
+						<div class="row-fill">
+							<div class="row-element">
+								<label for="name">Simulation Name</label> 
+								<input type="text" placeholder="Simulation Name" id="input-create-name" name="name">
+							</div>
+							<div class="row-element row-padding"></div>
+							<div class="row-element">
+								<label>Backend Version</label> 
+								<form class="radio-flip">
+									<div>
+										<label for="input-radio-cm4">
+											<input id="input-radio-cm4" class="" type="radio" name="version" value="CellModeller4" checked>
+											<div>CellModeller4</div>
+										</label>
+										<label for="input-radio-cm5">
+											<input id="input-radio-cm5" class="" type="radio" name="version" value="CellModeller5">
+											<div>CellModeller5</div>
+										</label>
+									</div>
+								</form>
+							</div>
+						</div>
+						
+					</div>
+	
+					<div class="row-push">
+						<div class="row">
+							<label for="input-upload-file">
+								<input type="file" name="upload-file" id="input-upload-file" style="display: none;" accept=".txt,.py">
+								<div id="upload-button-text" class="plain-button">Upload Source</div>
+							</label>
+							<div id="upload-file-name"></div>
+						</div>
+						<button id="create-button" class="submit-button">Create Simulation</button>
+					</div>
+				</div>
+			</div>
+			<div class="tab-frame inactive-frame">
+			
+			</div>
+		</div>
+	</div>
 </div>
 {% endblock %}

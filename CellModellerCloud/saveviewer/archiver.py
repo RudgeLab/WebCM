@@ -110,3 +110,22 @@ def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
 		index_file.truncate()
 
 	return (sim_data, frame_count)
+
+def read_simulation_source(uuid):
+	simulation = get_simulation(uuid)
+	source_path = os.path.join(simulation.save_location, "source.py")
+	source_content = ""
+	
+	with open(source_path, "r") as source_file:
+		source_content = source_file.read()
+
+	return source_content
+
+def write_simulation_source(uuid, source_content):
+	simulation = get_simulation(uuid)
+	source_path = os.path.join(simulation.save_location, "source.py")
+	
+	with open(source_path, "w") as source_file:
+		source_file.write(source_content)
+
+	return

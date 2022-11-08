@@ -25,7 +25,7 @@ function openInitLogWindow(title) {
 function closeInitLogWindow(clear) {
 	document.getElementById("message-log-container").style.display = "none";
 
-	if (close) {
+	if (clear) {
 		document.getElementById("message-log-text").value = "";
 	}
 }

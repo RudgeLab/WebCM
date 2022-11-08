@@ -67,3 +67,21 @@ def cell_info_from_index(request):
 	response["Content-Length"] = len(response_content)
 
 	return response
+
+def get_simulation_source(request):
+	if not "uuid" in request.GET:
+		return HttpResponseBadRequest("No simulation UUID provided")
+	
+	sim_id = request.GET["uuid"]
+	source = archiver.read_simulation_source(UUID(sim_id))
+
+	return HttpResponse(source, content_type="text/plain")
+
+def set_simulation_source(request):
+	request_content = request.body.decode("utf-8")
+	request_json = json.loads(request_content)
+
+	sim_id = request_json["uuid"]
+	archiver.write_simulation_source(UUID(sim_id), request_json["source"])
+
+	return HttpResponse()
