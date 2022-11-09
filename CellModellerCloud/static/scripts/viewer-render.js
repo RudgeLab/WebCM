@@ -210,10 +210,10 @@ function generateGrid(gl, context) {
 	const bytesPerLine = verticesPerLine * bytesPerVertex;
 	const gridVertexCount = (gridLineCountX + gridLineCountZ) * verticesPerLine;
 
-	var gridData = new ArrayBuffer(bytesPerVertex * gridVertexCount);
-	var gridDataView = new DataView(gridData);
+	let gridData = new ArrayBuffer(bytesPerVertex * gridVertexCount);
+	let gridDataView = new DataView(gridData);
 
-	var writeLineSegment = (baseIndex, xStart, xEnd, zStart, zEnd) => {
+	let writeLineSegment = (baseIndex, xStart, xEnd, zStart, zEnd) => {
 		gridDataView.setFloat32(baseIndex + 0, xStart, true);
 		gridDataView.setFloat32(baseIndex + 4, zStart, true);
 
@@ -316,7 +316,7 @@ export async function init(gl, context) {
 	const cellFragmentSource = await cellFragmentData.text();
 
 	context["cellShader"] = createShader(gl, cellVertexSource, cellFragmentSource, [
-		"u_MvpMatrix", "u_CameraPos", "u_SelectedIndex", "u_ThinOutlines"
+		"u_ProjectionMatrix", "u_ViewMatrix", "u_CameraPos", "u_SelectedIndex", "u_ThinOutlines"
 	]);
 
 	//Load grid shader
@@ -327,7 +327,7 @@ export async function init(gl, context) {
 	const gridFragmentSource = await gridFragmentData.text();
 
 	context["gridShader"] = createShader(gl, gridVertexSource, gridFragmentSource, [
-		"u_MvpMatrix", "u_Color"
+		"u_ProjectionMatrix", "u_ViewMatrix", "u_Color"
 	]);
 
 	//Generate grid
@@ -350,7 +350,8 @@ function prepassScene(gl, context, delta) {
 
 function renderScene(gl, context, delta) {
 	const camera = context["camera"];
-	const mvpMatrix = mat4.multiply(mat4.create(), camera["projectionMatrix"], camera["viewMatrix"]);
+	const projMatrix = camera["projectionMatrix"];
+	const viewMatrix = camera["viewMatrix"];
 
 	const cameraPos = context["camera"]["position"];
 
@@ -359,12 +360,13 @@ function renderScene(gl, context, delta) {
 	const gridMesh = context["grid"];
 
 	if (gridShader != null && gridMesh != null) {
-		var color = gridMesh["color"];
+		const color = gridMesh["color"];
 
 		gl.disable(gl.CULL_FACE);
 
 		gl.useProgram(gridShader["program"]);
-		gl.uniformMatrix4fv(gridShader["uniforms"]["u_MvpMatrix"], false, mvpMatrix);
+		gl.uniformMatrix4fv(gridShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
+		gl.uniformMatrix4fv(gridShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
 		gl.uniform3f(gridShader["uniforms"]["u_Color"], color[0], color[1], color[2]);
 
 		gl.bindVertexArray(gridMesh.vao);
@@ -385,7 +387,8 @@ function renderScene(gl, context, delta) {
 	const withThinOutline = context["useThinOutlines"] ? 1 : 0;
 
 	gl.useProgram(cellShader["program"]);
-	gl.uniformMatrix4fv(cellShader["uniforms"]["u_MvpMatrix"], false, mvpMatrix);
+	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
+	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
 	gl.uniform3f(cellShader["uniforms"]["u_CameraPos"], cameraPos[0], cameraPos[1], cameraPos[2]);
 	
 	gl.uniform1i(cellShader["uniforms"]["u_SelectedIndex"], context["selectedCellIndex"]);

@@ -13,7 +13,8 @@ layout(location = 5) in float a_Length;
 layout(location = 6) in float a_Radius;
 layout(location = 7) in vec4 a_Color;
 
-uniform mat4 u_MvpMatrix;
+uniform mat4 u_ViewMatrix;
+uniform mat4 u_ProjectionMatrix;
 
 uniform int u_SelectedIndex;
 uniform int u_ThinOutlines;
@@ -37,12 +38,15 @@ void main() {
 	float cp = cos(pitch);
 	float sp = sin(pitch);
 
+	float r = a_Radius;
+	float h = 0.5;
+
 	//Transform vertex position to world space
 	mat4 modelMatrix = mat4(
-		a_Radius * cy,      0.5 * 0.0,   a_Radius * -sy,     0.0,
-		a_Radius * sy * sp, 0.5 * cp,    a_Radius * cy * sp, 0.0,
-		a_Radius * sy * cp, 0.5 * -sp,   a_Radius * cy * cp, 0.0,
-		a_CellPos.x,        a_CellPos.y, a_CellPos.z,        1.0
+		r * cy,      r * 0.0,     r * -sy,     0.0,
+		h * sy * sp, h * cp,      h * cy * sp, 0.0,
+		r * sy * cp, r * -sp,     r * cy * cp, 0.0,
+		a_CellPos.x, a_CellPos.y, a_CellPos.z, 1.0
 	);
 
 	float totalLength = a_Length + 2.0 * a_Radius;
@@ -53,7 +57,7 @@ void main() {
 	vec4 worldPos = modelMatrix * vec4(position, 1.0);
 	
 	//Write varyings
-	gl_Position = u_MvpMatrix * worldPos;
+	gl_Position = u_ProjectionMatrix * u_ViewMatrix * worldPos;
 
 	/*
 	The following can also be compacted to:

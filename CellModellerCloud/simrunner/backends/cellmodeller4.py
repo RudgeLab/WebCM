@@ -63,6 +63,7 @@ class CellModeller4Backend(SimulationBackend):
 			# The length is computed differenty in CellModeller4 and CellModeller5. The front-end 
 			# expects that the length will be calculated based on how its done in CM5.
 			final_length = state.length + 1.0 - 2.0 * state.radius
+			final_length = 0 if final_length <= 0 else final_length
 
 			byte_buffer.write(struct.pack("<fff", state.pos[0], state.pos[2], state.pos[1]))
 			byte_buffer.write(struct.pack("<fff", state.dir[0], state.dir[2], state.dir[1]))

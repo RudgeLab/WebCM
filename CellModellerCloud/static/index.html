@@ -9,10 +9,10 @@
 <div id="content-root">
 	<div id="main-content">
 		<div id="tab-container">
-			<div class="tab-item">
+			<div class="tab-item hidden-tab">
 				<p>Select Simulation</p>
 			</div>
-			<div class="tab-item hidden-tab">
+			<div class="tab-item">
 				<p>Create Simulation</p>
 			</div>
 			<div class="tab-item hidden-tab">
@@ -20,12 +20,12 @@
 			</div>
 		</div>
 		<div id="tab-window">
-			<div class="tab-frame" id="select-sim-frame">
+			<div class="tab-frame inactive-frame" id="select-sim-frame">
 				<div id="select-sim-item-container">
 
 				</div>
 			</div>
-			<div class="tab-frame inactive-frame" id="create-sim-frame">
+			<div class="tab-frame" id="create-sim-frame">
 				<div id="create-form-container">
 					<div id="create-form">
 						{% csrf_token %}

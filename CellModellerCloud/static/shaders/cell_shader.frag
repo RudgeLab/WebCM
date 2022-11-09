@@ -5,6 +5,9 @@ precision highp float;
 
 uniform vec3 u_CameraPos;
 
+uniform mat4 u_ViewMatrix;
+uniform mat4 u_ProjectionMatrix;
+
 in vec3 v_WorldPos;
 in float v_Radius;
 in vec3 v_CellEnd0;
@@ -15,6 +18,44 @@ flat in int v_IsSelected;
 flat in int v_ThinOutline;
 
 out vec4 outColor;
+
+/*
+ Taken from:
+	https://iquilezles.org/articles/intersectors/
+*/
+float capIntersect(in vec3 rayOrigin, in vec3 rayDir, in vec3 capA, in vec3 capB, in float radius)  {
+	vec3 ba = capB - capA;
+	vec3 oa = rayOrigin - capA;
+
+	float baba = dot(ba, ba);
+	float bard = dot(ba, rayDir);
+	float baoa = dot(ba, oa);
+	float rdoa = dot(rayDir, oa);
+	float oaoa = dot(oa, oa);
+
+	float a = baba - bard * bard;
+	float b = baba * rdoa - baoa * bard;
+	float c = baba * oaoa - baoa * baoa - radius * radius * baba;
+	float h = b * b - a * c;
+
+	if (h >= 0.0) {
+		float t = (-b - sqrt(h)) / a;
+		float y = baoa + t * bard;
+
+		// body
+		if (y > 0.0 && y < baba) return t;
+
+		// caps
+		vec3 oc = (y <= 0.0) ? oa : rayOrigin - capB;
+		b = dot(rayDir,oc);
+		c = dot(oc,oc) - radius * radius;
+		h = b * b - c;
+
+		if (h > 0.0) return -b - sqrt(h);
+	}
+
+	return -1.0;
+}
 
 /*
  Based on:
@@ -58,6 +99,10 @@ float lineSegmentDistance(vec3 a0, vec3 a1, vec3 b0, vec3 b1) {
 	return distance(pA, pB);
 }
 
+/*
+ Look at:
+	https://bgolus.medium.com/rendering-a-sphere-on-a-quad-13c92025570c
+*/
 void main() {
 	float dist = lineSegmentDistance(u_CameraPos, v_WorldPos, v_CellEnd0, v_CellEnd1);
 
@@ -72,6 +117,14 @@ void main() {
 	if (dist > v_Radius) {
 		discard;
 	}
+
+	//There's probably a much more efficient way of doing this
+	vec3 rayDir = normalize(v_WorldPos - u_CameraPos);
+	float rayDepth = capIntersect(u_CameraPos, rayDir, v_CellEnd0, v_CellEnd1, v_Radius);
+	vec3 intersectionPos = u_CameraPos + rayDir * rayDepth;
+
+	vec4 clipPos = u_ProjectionMatrix * u_ViewMatrix * vec4(intersectionPos, 1.0);
+	gl_FragDepth = clipPos.z / clipPos.w;
 
 	outColor = vec4(color, 1);
 }
