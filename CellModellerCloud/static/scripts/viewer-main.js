@@ -17,17 +17,21 @@ function setButtonContainerDisplay(display) {
 }
 
 /****** Init log ******/
-function openInitLogWindow(title) {
+function openInitLogWindow(context, title) {
 	document.getElementById("message-log-title").innerText = title;
 	document.getElementById("message-log-container").style.display = "inline";
+
+	context["isLogWindowOpen"] = true;
 }
 
-function closeInitLogWindow(clear) {
+function closeInitLogWindow(context, clear) {
 	document.getElementById("message-log-container").style.display = "none";
 
 	if (clear) {
 		document.getElementById("message-log-text").value = "";
 	}
+
+	context["isLogWindowOpen"] = false;
 }
 
 function appendInitLogMessage(message) {
@@ -140,15 +144,15 @@ function connectToServer(context) {
 					context["timelineSlider"].value = frameCount;
 				}
 			} else if (action === "infolog") {
-				openInitLogWindow("Initialization Log");
+				openInitLogWindow(context, "Initialization Log");
 				appendInitLogMessage(data);
 			} else if (action === "error_message") {
-				openInitLogWindow("Error Log");
+				openInitLogWindow(context, "Error Log");
 				appendInitLogMessage(data);
 
 				setStatusMessage("Fatal Error");
 			} else if (action === "closeinfolog") {
-				closeInitLogWindow(true);
+				closeInitLogWindow(context, true);
 			} else if (action === "simstopped") {
 				setStatusMessage("Terminated");
 			} else if (action === "reloaddone") {
@@ -478,7 +482,7 @@ function processMouseMove(event, context) {
 	input["lastMouseY"] = event.offsetY;
 
 	//Move orbit
-	if (input["middleButtonPressed"]) {
+	if (input["middleButtonPressed"] && !context["isLogWindowOpen"]) {
 		var camera = context["camera"];
 
 		if (input["shiftPressed"]) {
