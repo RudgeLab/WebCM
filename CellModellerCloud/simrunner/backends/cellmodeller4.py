@@ -58,16 +58,16 @@ class CellModeller4Backend(SimulationBackend):
 			color_r = int(255.0 * min(state.color[0], 1.0))
 			color_g = int(255.0 * min(state.color[1], 1.0))
 			color_b = int(255.0 * min(state.color[2], 1.0))
-			packed_color = 0xFF000000 | (color_b << 16) | (color_g << 8) | color_r
+			packed_color = 0x00000000 | (color_b << 16) | (color_g << 8) | color_r
 
 			# The length is computed differenty in CellModeller4 and CellModeller5. The front-end 
 			# expects that the length will be calculated based on how its done in CM5.
 			final_length = state.length + 1.0 - 2.0 * state.radius
 			final_length = 0 if final_length <= 0 else final_length
 
-			byte_buffer.write(struct.pack("<fff", state.pos[0], state.pos[2], state.pos[1]))
-			byte_buffer.write(struct.pack("<fff", state.dir[0], state.dir[2], state.dir[1]))
-			byte_buffer.write(struct.pack("<ffI", final_length, state.radius, packed_color))
+			byte_buffer.write(struct.pack("<fff", state.pos[0], -state.pos[2], state.pos[1]))
+			byte_buffer.write(struct.pack("<fff", state.dir[0],  state.dir[2], state.dir[1]))
+			byte_buffer.write(struct.pack("<ffi", final_length,  state.radius, packed_color))
 
 		for it in cell_states.keys():
 			state = cell_states[it]

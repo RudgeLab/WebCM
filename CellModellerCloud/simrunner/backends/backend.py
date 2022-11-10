@@ -18,7 +18,7 @@ class SimulationBackend:
 
 		self.params = params
 
-	def initialize(self, name, source):
+	def initialize(self):
 		pass
 	
 	def step(self):
