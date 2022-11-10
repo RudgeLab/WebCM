@@ -46,17 +46,19 @@ function appendInitLogMessage(message) {
 }
 
 async function requestFrame(context, uuid, index) {
-	context["currentIndex"] = index;
+	context["currentFrameIndex"] = index;
+
+	const frameRequestIndex = context["frameRequestIndex_Latest"]++;
 	
 	const frameData = await fetch(`/api/saveviewer/framedata?index=${index}&uuid=${uuid}`);
 	const frameBuffer = await frameData.arrayBuffer();
 
-	if (context["currentIndex"] != index) {
-		//TODO:
-		//console.log("Skipping frame");
-		//return;
+	if (frameRequestIndex < context["frameRequestIndex_Received"]) {
+		console.log(`${context["currentFrameIndex"]} != ${index}`);
+		return;
 	}
 
+	context["frameRequestIndex_Received"] = frameRequestIndex;
 	context["simInfo"].frameIndex = index;
 
 	setSimFrame(index + 1, context["simInfo"].frameCount);
@@ -203,7 +205,7 @@ async function updateCellInfo(context) {
 		cellDetailsSection.style.display = "none";
 	} else {
 		const simUUID = context["simUUID"];
-		const frameIndex = context["currentIndex"];
+		const frameIndex = context["currentFrameIndex"];
 		const cellId = context["selectedCellIdentifier"];
 
 		const cellData = await fetch(`/api/saveviewer/cellinfoindex?cellid=${cellId}&frameindex=${frameIndex}&uuid=${simUUID}`);
@@ -349,6 +351,9 @@ async function initFrame(gl, context) {
 
 	context["selectedCellIndex"] = -1;
 	context["useThinOutlines"] = false;
+	context["currentFrameIndex"] = 0;
+	context["frameRequestIndex_Received"] = 0;
+	context["frameRequestIndex_Latest"] = 0;
 
 	//Initialize camera details
 	context["camera"] = {
