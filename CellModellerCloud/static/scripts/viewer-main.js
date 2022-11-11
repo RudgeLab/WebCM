@@ -411,18 +411,16 @@ async function initFrame(gl, context) {
 
 	context["alwaysUseLatestStep"] = snapToLastCheckbox.checked;
 
-	//Setup reload buttons
-	const recompileBtn = document.getElementById("recompile-btn");
-	if (recompileBtn !== null) recompileBtn.onclick = function(event) { recompileDevSimulation(context); };
-	
 	//Setup buttons
+	const uuid = document.getElementById("uuid-field").value;
+
+	document.getElementById("source-btn").onclick = function(event) { window.open(`/edit/${uuid}/`, "_blank"); };
 	document.getElementById("reload-btn").onclick = function(event) { reloadSimulation(context); };
 	document.getElementById("stop-btn").onclick = function(event) { stopSimulation(context); };
+	
 	document.getElementById("thin-cell-outlines").onchange = function(event) { context["useThinOutlines"] = this.checked; };
 	
 	//Initialize the renderer
-	const uuid = document.getElementById("uuid-field").value;
-
 	await render.init(gl, context);
 	await connectToSimulation(context, uuid);
 }
@@ -466,7 +464,7 @@ function resizeCanvas(gl, context, canvas) {
 	render.resize(gl, context, canvas);
 }
 
-function processKeyButon(event, context, isdown) {
+function processKeyButton(event, context, isdown) {
 	var input = context["input"];
 
 	switch (event.code) {
@@ -628,8 +626,8 @@ async function main() {
 	canvas.addEventListener("mousemove", e => processMouseMove(e, context));
 	canvas.addEventListener("mousedown", e => processMouseButton(e, context, true));
 	canvas.addEventListener("mouseup", e => processMouseButton(e, context, false));
-	canvas.addEventListener("keydown", e => processKeyButon(e, context, true));
-	canvas.addEventListener("keyup", e => processKeyButon(e, context, false));
+	canvas.addEventListener("keydown", e => processKeyButton(e, context, true));
+	canvas.addEventListener("keyup", e => processKeyButton(e, context, false));
 	canvas.addEventListener("wheel", e => processMouseWheel(e, context));
 	canvas.addEventListener("contextmenu", e => { e.preventDefault() });
 

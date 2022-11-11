@@ -39,7 +39,7 @@ def register_simulation(user, sim_title, sim_desc):
 	global global__archiver
 
 	sim_uuid = uuid4()
-	save_dir = os.path.join(global__archiver.archive_root, str(sim_uuid))
+	save_dir = os.path.join(global__archiver.archive_root, "simulation_" + str(sim_uuid))
 
 	entry = SimulationEntry(owner=user, title=sim_title, description=sim_desc, uuid=sim_uuid, save_location=save_dir)
 	entry.save()
@@ -125,7 +125,7 @@ def write_simulation_source(uuid, source_content):
 	simulation = get_simulation(uuid)
 	source_path = os.path.join(simulation.save_location, "source.py")
 	
-	with open(source_path, "w") as source_file:
-		source_file.write(source_content)
+	with open(source_path, "wb") as source_file:
+		source_file.write(source_content.encode("utf-8"))
 
 	return
