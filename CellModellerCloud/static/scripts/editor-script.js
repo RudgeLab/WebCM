@@ -7,6 +7,16 @@
 		automaticLayout: true,
 	});
 
+	const editorToolbar = document.getElementById("editor-toolbar");
+	editorToolbar.addEventListener("keydown", function(e) {
+		if (e.ctrlKey && e.key === "s") {
+			e.preventDefault();
+			e.stopPropagation();
+
+			saveSource();
+		}
+	}, true);
+
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 	const uuid = document.getElementById("uuid-field").value;
 
