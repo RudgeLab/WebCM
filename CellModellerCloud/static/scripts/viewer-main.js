@@ -54,7 +54,7 @@ async function requestFrame(context, uuid, index) {
 	const frameBuffer = await frameData.arrayBuffer();
 
 	if (frameRequestIndex < context["frameRequestIndex_Received"]) {
-		console.log(`${context["currentFrameIndex"]} != ${index}`);
+		//Skip this frame
 		return;
 	}
 
@@ -365,8 +365,8 @@ async function initFrame(gl, context) {
 		"orbitRadiusSensitivity": 0.02,
 
 		"fovAngle": 70.0,
-		"nearZ": 0.01,
-		"farZ": 1000.0,
+		"nearZ": 0.03,
+		"farZ": 2000.0,
 		"position": vec3.fromValues(0, 3.0, 10.0),
 		"rotation": quat.create(),
 		"pitch": -90.0,

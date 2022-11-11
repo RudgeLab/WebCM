@@ -197,11 +197,11 @@ async function loadBacteriumModel(gltf, gl, context) {
 }
 
 function generateGrid(gl, context) {
-	const gridLineCountX = 61;
-	const gridLineCountZ = 61;
+	const gridLineCountX = 201;
+	const gridLineCountZ = 201;
 
-	const gridWidth = 600;
-	const gridHeight = 600;
+	const gridWidth = 2000;
+	const gridHeight = 2000;
 
 	const lineSize = 0.2;
 

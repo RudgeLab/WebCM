@@ -39,6 +39,22 @@ html, body {
 	padding: 0 0.2rem;
 }
 
+#viewer-toolbar {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	place-items: center;
+}
+
+#home-button {
+	pointer-events: all;
+	cursor: pointer;
+}
+
+#home-button a {
+	text-decoration: none;
+	color: inherit;
+}
+
 #timeline-header {
 	max-width: 70rem;
 	width: 70rem;
