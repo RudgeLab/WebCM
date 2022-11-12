@@ -1,18 +1,19 @@
 {% extends "background-wall.html" %}
 
 {% block header %}
-<script src="/static/scripts/index-script.js" type="module"></script>
+<script src="/static/scripts/index-script.js"></script>
 <link rel="stylesheet" href="/static/index-stylesheet.css"/>
 {% endblock %}
 
 {% block content %}
+<div id="all-encompassing-root">
 <div id="content-root">
 	<div id="main-content">
 		<div id="tab-container">
-			<div class="tab-item hidden-tab">
+			<div class="tab-item">
 				<p>Select Simulation</p>
 			</div>
-			<div class="tab-item">
+			<div class="tab-item hidden-tab">
 				<p>Create Simulation</p>
 			</div>
 			<div class="tab-item hidden-tab">
@@ -20,12 +21,12 @@
 			</div>
 		</div>
 		<div id="tab-window">
-			<div class="tab-frame inactive-frame" id="select-sim-frame">
+			<div class="tab-frame" id="select-sim-frame">
 				<div id="select-sim-item-container">
 
 				</div>
 			</div>
-			<div class="tab-frame" id="create-sim-frame">
+			<div class="tab-frame inactive-frame" id="create-sim-frame">
 				<div id="create-form-container">
 					<div id="create-form">
 						{% csrf_token %}
@@ -72,5 +73,20 @@
 			</div>
 		</div>
 	</div>
+</div>
+<div id="dialog-layer" style="display: none;">
+	<div id="dialog-window">
+		<div>
+			<div>Dialog Window</div>
+			<div id="dialog-message">
+				Would you like to delete simulation?
+			</div>
+		</div>
+		<div>
+			<button class="plain-button small-button" onclick="closeDialog()">Cancel</button>
+			<button class="submit-button small-button" onclick="handleAcceptDelete(this)">Accept</button>
+		</div>
+	</div>
+</div>
 </div>
 {% endblock %}

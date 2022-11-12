@@ -44,6 +44,12 @@ def kill_simulation(uuid):
 
 	return True
 
+def delete_simulation(uuid):
+	assert type(uuid) is UUID
+	
+	kill_simulation(uuid)
+	archiver.remove_simulation(uuid)
+
 def is_simulation_running(uuid):
 	assert type(uuid) is UUID
 

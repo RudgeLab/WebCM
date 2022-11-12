@@ -1,6 +1,7 @@
 import os
 import json
 import pathlib
+import shutil
 
 from uuid import UUID, uuid4
 
@@ -47,6 +48,18 @@ def register_simulation(user, sim_title, sim_desc):
 	os.mkdir(save_dir)
 
 	return entry
+
+def remove_simulation(sim_uuid):
+	from cloudserver.models import SimulationEntry
+
+	global global__archiver
+
+	entry = SimulationEntry.objects.get(uuid=sim_uuid)
+	dir_path = entry.save_location
+
+	entry.delete()
+
+	shutil.rmtree(dir_path)
 
 def get_simulation(id):
 	from cloudserver.models import SimulationEntry

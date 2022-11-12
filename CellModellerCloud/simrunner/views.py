@@ -41,3 +41,12 @@ def stop_simulation(request):
 	manager.kill_simulation(UUID(request.GET["uuid"]))
 
 	return HttpResponse()
+
+@login_required
+def delete_simulation(request):
+	if not "uuid" in request.GET:
+		return HttpResponseBadRequest("No simulation UUID provided")
+
+	manager.delete_simulation(UUID(request.GET["uuid"]))
+
+	return HttpResponse()
