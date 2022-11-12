@@ -3,7 +3,7 @@
 	const editor = monaco.editor.create(editorDiv, {
 		value: "",
 		language: "python",
-		readOnly: false,
+		readOnly: !param__isOnline,
 		automaticLayout: true,
 	});
 
@@ -18,7 +18,7 @@
 	}, true);
 
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
-	const uuid = document.getElementById("uuid-field").value;
+	const uuid = param__simulationUUID;
 
 	const sourceUpload = document.getElementById("source-upload-file");
 	const sourceState = document.getElementById("source-state");
@@ -49,12 +49,15 @@
 	sourceUpload.addEventListener("change", doFileUpload, false);
 
 	const sourceResponse = await fetch(`/api/saveviewer/getsimsource?uuid=${uuid}`);
+	if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
+	
 	const sourceBody = await sourceResponse.text();
 	editor.setValue(sourceBody);
 
 	editor.onDidChangeModelContent(e => unsaveSource());
 	editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveSource());
 
-	document.getElementById("upload-file-btn").onclick = (e) => { sourceUpload.click(); };
-	document.getElementById("save-source-btn").onclick = (e) => saveSource();
+	let tempButton = null;
+	if (tempButton = document.getElementById("upload-file-btn")) tempButton.onclick = (e) => { sourceUpload.click(); };
+	if (tempButton = document.getElementById("save-source-btn")) tempButton.onclick = (e) => saveSource();
 })();

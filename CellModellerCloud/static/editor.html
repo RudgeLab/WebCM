@@ -23,6 +23,7 @@
 		#editor-toolbar {
 			display: flex;
 			flex-direction: row;
+			justify-content: center;
 
 			width: 100%;
 			min-height: 1.5rem;
@@ -64,22 +65,32 @@
 <body>
 	<form>
 		{% csrf_token %}
-		<input type="hidden" id="uuid-field" value="{{ edit_uuid }}">
 	</form>
 
 	<div id="root-container">
 		<input type="file" name="upload-file" id="source-upload-file" style="display: none;" accept=".txt,.py">
 		<div id="editor-toolbar" tabindex="0">
+			{% if is_online %}
 			<div style="display: flex; flex-direction: row; flex: 1;">
 				<div id="save-source-btn" class="toolbar-item toolbar-item-select">Save Source</div>
 				<div id="upload-file-btn" class="toolbar-item toolbar-item-select">Upload File</div>
 			</div>
 			<div id="source-state" class="toolbar-item">Saved</div>
+			{% else %}
+			<div class="toolbar-item">Read-Only</div>
+			{% endif %}
 		</div>
 		<div id="editor-container"></div>
 	</div>
 
-	<script> var require = { paths: { vs: '/static/scripts/vs' } }; </script>
+	{% if is_online %}
+	<script>const param__isOnline = true;</script>		
+	{% else %}
+	<script>const param__isOnline = false;</script>
+	{% endif %}
+
+	<script>const param__simulationUUID = "{{ simulation_uuid }}";</script>
+	<script>var require = { paths: { vs: '/static/scripts/vs' } };</script>
 	<script src="/static/scripts/vs/loader.js"></script>
 	<script src="/static/scripts/vs/editor/editor.main.nls.js"></script>
 	<script src="/static/scripts/vs/editor/editor.main.js"></script>

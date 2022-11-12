@@ -412,11 +412,12 @@ async function initFrame(gl, context) {
 	context["alwaysUseLatestStep"] = snapToLastCheckbox.checked;
 
 	//Setup buttons
-	const uuid = document.getElementById("uuid-field").value;
+	const uuid = param__simulationUUID;
 
-	document.getElementById("source-btn").onclick = function(event) { window.open(`/edit/${uuid}/`, "_blank"); };
-	document.getElementById("reload-btn").onclick = function(event) { reloadSimulation(context); };
-	document.getElementById("stop-btn").onclick = function(event) { stopSimulation(context); };
+	let tempButton = null;
+	document.getElementById("source-btn").onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
+	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
+	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
 	
 	document.getElementById("thin-cell-outlines").onchange = function(event) { context["useThinOutlines"] = this.checked; };
 	

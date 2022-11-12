@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<script>const param__simulationUUID = "{{ simulation_uuid }}";</script>
 	<script src="/static/scripts/gl-matrix-min.js" type="module"></script>
 	<script src="/static/scripts/viewer-main.js" type="module"></script>
 	<script src="/static/scripts/viewer-render.js" type="module"></script>
@@ -8,8 +9,6 @@
 	<title>CellModeller Simulation</title>
 </head>
 <body>
-	<input type="hidden" id="uuid-field" value="{{ simulation_uuid }}">
-
 	<div id="stackedcontainer">
 		<canvas id="renderTargetCanvas" tabindex="1"></canvas>
 		<div id="canvas-overlay" tabindex="-1">
@@ -68,8 +67,10 @@
 			</div>
 			<div id="button-container" class="item-background force-input">
 				<button id="source-btn">Edit source</button>
+				{% if is_online %}
 				<button id="reload-btn">Reload</button>
 				<button id="stop-btn">Stop</button>
+				{% endif %}
 			</div>
 			<div id="message-log-container" class="item-background force-input">
 				<div>

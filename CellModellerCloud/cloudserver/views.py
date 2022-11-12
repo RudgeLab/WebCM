@@ -33,7 +33,8 @@ def viewer(request, sim_uuid):
     with open("static/viewer.html", "r") as index_file:
         index_data = index_file.read()
 
-    context = RequestContext(request, { "simulation_uuid": sim_uuid })
+    is_online = manager.is_simulation_running(UUID(sim_uuid))
+    context = RequestContext(request, { "simulation_uuid": sim_uuid, "is_online": is_online })
     content = Template(index_data).render(context)
 
     return HttpResponse(content)
@@ -48,7 +49,8 @@ def editor(request, sim_uuid):
     with open("static/editor.html", "r") as index_file:
         index_data = index_file.read()
 
-    context = RequestContext(request, { "edit_uuid": sim_uuid })
+    is_online = manager.is_simulation_running(UUID(sim_uuid))
+    context = RequestContext(request, { "simulation_uuid": sim_uuid, "is_online": is_online })
     content = Template(index_data).render(context)
 
     return HttpResponse(content)
