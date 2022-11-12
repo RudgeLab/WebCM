@@ -14,31 +14,31 @@
 		<canvas id="renderTargetCanvas" tabindex="1"></canvas>
 		<div id="canvas-overlay" tabindex="-1">
 
-			<div id="viewer-toolbar">
-				<div style="height:100%">
-					<div id="home-button" class="item-background">
-						<a href="/">&lt;- Home</a>
-					</div>
+			<div id="viewer-toolbar-container">
+				<div id="home-button" class="item-background">
+					<a href="/">&lt;- Home</a>
 				</div>
-				<div id="timeline-header">
-					<div class="item-background" style="width: 100%">
-						<input type="range" id="frame-timeline" class="force-input">
+				<div id="viewer-toolbar">
+					<div id="timeline-header">
+						<div class="item-background" style="width: 100%">
+							<input type="range" id="frame-timeline" class="force-input">
+						</div>
+						<ul id="timeline-controls">
+							<li>
+								<div id="status-container" class="center-children item-background"><p id="status-label">Status: Offline</p></div>
+							</li>
+							<li class="item-background">
+								<div class="center-children"><p id="sim-name" class="center-children">Name: No Simulation</p></div>
+								<div class="center-children"><p id="sim-frame">Frame: 0 / 0</p></div>
+							</li>
+							<li>
+								<div class="item-background">
+									<input type="checkbox" id="snap-to-last" name="snap-to-last" class="force-input" checked>
+									<label for="snap-to-last">Snap to last step</label>
+								</div>
+							</li>
+						</ul>
 					</div>
-					<ul id="timeline-controls">
-						<li>
-							<div id="status-container" class="center-children item-background"><p id="status-label">Status: Offline</p></div>
-						</li>
-						<li class="item-background">
-							<div class="center-children"><p id="sim-name" class="center-children">Name: No Simulation</p></div>
-							<div class="center-children"><p id="sim-frame">Frame: 0 / 0</p></div>
-						</li>
-						<li>
-							<div class="item-background">
-								<input type="checkbox" id="snap-to-last" name="snap-to-last" class="force-input" checked>
-								<label for="snap-to-last">Snap to last step</label>
-							</div>
-						</li>
-					</ul>
 				</div>
 			</div>
 

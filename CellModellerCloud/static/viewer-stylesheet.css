@@ -39,13 +39,20 @@ html, body {
 	padding: 0 0.2rem;
 }
 
+#viewer-toolbar-container {
+	position: relative;
+}
+
 #viewer-toolbar {
-	display: grid;
-	grid-template-columns: auto 1fr;
-	place-items: center;
+	display: flex;
+	justify-content: center;
 }
 
 #home-button {
+	position: absolute;
+	left: 0;
+	top: 0;
+
 	pointer-events: all;
 	cursor: pointer;
 
@@ -60,6 +67,7 @@ html, body {
 #timeline-header {
 	max-width: 70rem;
 	width: 70rem;
+	margin: 0 5rem;
 }
 
 #frame-timeline {
