@@ -124,7 +124,8 @@ void main() {
 	vec3 intersectionPos = u_CameraPos + rayDir * rayDepth;
 
 	vec4 clipPos = u_ProjectionMatrix * u_ViewMatrix * vec4(intersectionPos, 1.0);
-	gl_FragDepth = clipPos.z / clipPos.w;
+	float clipDepth = clipPos.z / clipPos.w;
+	gl_FragDepth = 0.5 * clipDepth + 0.5;
 
 	outColor = vec4(color, 1);
 }
