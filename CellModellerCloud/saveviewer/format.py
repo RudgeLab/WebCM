@@ -1,4 +1,6 @@
-import struct, io, zlib
+import zlib
+import msgpack
+import numpy
 
 class PackedCell:
 	def __init__(self):
@@ -15,99 +17,99 @@ class PackedCell:
 		self.strain_rate = 0.0
 		self.start_volume = 0.0
 
-	@staticmethod
-	def from_cellmodeller4(state):
-		packed_cell = PackedCell()
-		packed_cell.id = state.id
-		packed_cell.radius = state.radius
-		packed_cell.length = state.length
-		packed_cell.growth_rate = state.growthRate
-		packed_cell.cell_age = state.cellAge
-		packed_cell.eff_growth = state.effGrowth
-		packed_cell.cell_type = state.cellType
-		packed_cell.cell_adhesion = state.cellAdh
-		packed_cell.target_volume = state.targetVol
-		packed_cell.volume = state.volume
-		packed_cell.strain_rate = state.strainRate
-		packed_cell.start_volume = state.startVol
+	def create_readable_dict(self):
+		output = {
+			"Cell Id": self.id,
+			"Radius": self.radius,
+			"Length": self.length,
+			"Growth rate": self.growth_rate,
+			"Cell age": self.cell_age,
+			"Effective growth": self.eff_growth,
+			"Cell type": self.cell_type,
+			"Cell adhesion": self.cell_adhesion,
+			"Target volume": self.target_volume,
+			"Volume": self.volume,
+			"Strain rate": self.strain_rate,
+			"Start volume": self.start_volume,
+		}
 
-		return packed_cell
-
-	@staticmethod
-	def byte_size():
-		return 8 + 4 * 11
+		return dict(filter(lambda val: not val[1] is None, output.items()))
 
 	@staticmethod
-	def write_to_bytesio(cell, byte_buffer):
-		# Index, Radius, Length
-		byte_buffer.write(struct.pack("<Qff", cell.id, cell.radius, cell.length))
+	def from_named_entries(entries):
+		cell = PackedCell()
+		cell.id = entries.get("id")
+		cell.radius = entries.get("radius")
+		cell.length = entries.get("length")
+		cell.growth_rate = entries.get("growth_rate")
+		cell.cell_age = entries.get("cell_age")
+		cell.eff_growth = entries.get("eff_growth")
+		cell.cell_type = entries.get("cell_type")
+		cell.cell_adhesion = entries.get("cell_adhesion")
+		cell.target_volume = entries.get("target_volume")
+		cell.volume = entries.get("volume")
+		cell.strain_rate = entries.get("strain_rate")
+		cell.start_volume = entries.get("start_volume")
 
-		# Growth rate, Cell age, Effective growth
-		byte_buffer.write(struct.pack("<fif", cell.growth_rate, cell.cell_age, cell.eff_growth))
+		return cell
 
-		# Cell type, Cell adhesion, Target volume
-		byte_buffer.write(struct.pack("<iif", cell.cell_type, cell.cell_adhesion, cell.target_volume))
+def write_states(path, cell_states, id_attribute, attributes_to_pack):
+	key_mappings = { "id": 0 }
+	cell_objects = []
 
-		# Volume, Strain rate, Start volume, 
-		byte_buffer.write(struct.pack("<fff", cell.volume, cell.strain_rate, cell.start_volume))
+	for it in cell_states.keys():
+		state = cell_states[it]
+		state_variables = vars(state)
+		state_object = {}
 
-	@staticmethod
-	def read_from_bytesio(byte_buffer, offset=0):
-		(id, radius, length,\
-			growth_rate, cell_age, eff_growth,\
-			cell_type, cell_adhesion, target_volume,\
-			volume, strain_rate, start_volume) = struct.unpack_from("<Qfffifiiffff", byte_buffer, offset)
+		# Write ID
+		state_object[0] = state_variables[id_attribute]
 
-		packed_cell = PackedCell()
-		packed_cell.id = id
-		packed_cell.radius = radius
-		packed_cell.length = length
-		packed_cell.growth_rate = growth_rate
-		packed_cell.cell_age = cell_age
-		packed_cell.eff_growth = eff_growth
-		packed_cell.cell_type = cell_type
-		packed_cell.cell_adhesion = cell_adhesion
-		packed_cell.target_volume = target_volume
-		packed_cell.volume = volume
-		packed_cell.strain_rate = strain_rate
-		packed_cell.start_volume = start_volume
+		# Write customizable attributes
+		for (attr, standard_name) in attributes_to_pack:
+			if not attr in state_variables:
+				continue
 
-		return packed_cell
+			if not standard_name in key_mappings:
+				# The ID attribute has a key id of zero, so we need to add one to all ids
+				# to prevent collisions
+				key_mappings[standard_name] = len(key_mappings)
 
-class PackedCellWriter:
-	def __init__(self):
-		self.byte_buffer = io.BytesIO()
-	
-	def write_header(self, cell_count):
-		self.byte_buffer.write(struct.pack("<i", int(cell_count)))
+			key_id = key_mappings[standard_name]
+			state_object[key_id] = state_variables[attr]
 
-	def write_cell(self, cell):
-		PackedCell.write_to_bytesio(cell, self.byte_buffer)
+		cell_objects.append(state_object)
 
-	def flush_to_file(self, file):
-		file.write(zlib.compress(self.byte_buffer.getbuffer(), 2))
+	output_object = { "key_mappings": key_mappings, "states": cell_objects }
 
-class PackedCellReader:
-	def __init__(self, file):
-		self.byte_buffer = zlib.decompress(file.read())
-		self._read_header()
+	def default(obj):
+		if isinstance(obj, numpy.float32):
+			return float(obj)
 		
-	def _read_header(self):
-		(cell_count,) = struct.unpack_from("<i", self.byte_buffer, 0)
+		raise TypeError(f"Could not pack type: {type(obj)}")
 
-		self.cell_count = cell_count
-	
-	def read_cell_at_index(self, index):
-		if self.cell_count <= index:
-			raise IndexError(f"Cell index ({index}) is out of bounds. Acceptable range is 0 to {self.cell_count - 1}")
+	with open(path, "wb") as out_file:
+		packed_data = msgpack.packb(output_object, default=default)
 
-		return PackedCell.read_from_bytesio(self.byte_buffer, 4 + PackedCell.byte_size() * index)
+		out_file.write(zlib.compress(packed_data, 2))
 
-	def find_cell_with_id(self, id):
-		for i in range(0, self.cell_count):
-			cell = self.read_cell_at_index(i)
+def read_state_with_id(path, target_id):
+	raw_data = None
 
-			if cell.id == id:
-				return cell
-		
-		return None
+	# Read and unpack the file
+	with open(path, "rb") as in_file:
+		raw_data = zlib.decompress(in_file.read())
+
+	unpacked_data = msgpack.unpackb(raw_data, strict_map_key=False)
+
+	# Create reverse key mappings
+	reverse_key_mappings = { value:key for (key, value) in unpacked_data["key_mappings"].items() }
+
+	# Find the required cell
+	for state in unpacked_data["states"]:
+		if not state[0] == target_id:
+			continue
+
+		return PackedCell.from_named_entries({ reverse_key_mappings[key]:value for (key, value) in state.items() })
+
+	return None

@@ -1,7 +1,7 @@
 from django.http import HttpResponse, FileResponse, HttpResponseBadRequest, HttpResponseNotFound
 
 from saveviewer import archiver
-from saveviewer.format import PackedCellReader
+from saveviewer import format as sv_format
 
 from uuid import UUID
 
@@ -41,28 +41,9 @@ def cell_info_from_index(request):
 	cellid = request.GET["cellid"]
 
 	(step_file, viz_file) = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
+	cell_data = sv_format.read_state_with_id(step_file, int(cellid))
 
-	with open(step_file, "rb") as frame_file:
-		frame_reader = PackedCellReader(frame_file)
-
-	cell_data = frame_reader.find_cell_with_id(int(cellid))
-
-	data = {
-		"Cell Id": cell_data.id,
-		"Radius": cell_data.radius,
-		"Length": cell_data.length,
-		"Growth rate": cell_data.growth_rate,
-		"Cell age": cell_data.cell_age,
-		"Effective growth": cell_data.eff_growth,
-		"Cell type": cell_data.cell_type,
-		"Cell adhesion": cell_data.cell_adhesion,
-		"Target volume": cell_data.target_volume,
-		"Volume": cell_data.volume,
-		"Strain rate": cell_data.strain_rate,
-		"Start volume": cell_data.start_volume,
-	}
-
-	response_content = json.dumps(data)
+	response_content = json.dumps(cell_data.create_readable_dict())
 	response = HttpResponse(response_content, content_type="application/json")
 	response["Content-Length"] = len(response_content)
 

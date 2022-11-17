@@ -1,10 +1,10 @@
 from .backend import SimulationBackend
 
-from saveviewer.format import *
+from saveviewer import format as sv_format
 
-import struct
 import io
 import os
+import struct
 
 import importlib
 
@@ -33,18 +33,21 @@ class CellModeller4Backend(SimulationBackend):
 		self.simulation.step()
 
 	def _write_step_frame(self, path):
-		cell_states = self.simulation.cellStates
+		ATTRIBUTES_TO_PACK = [
+			("radius", "radius"),
+			("length", "length"),
+			("growthRate", "growth_rate"),
+			("cellAge", "cell_age"),
+			("effGrowth", "eff_growth"),
+			("cellType", "cell_type"),
+			("cellAdh", "cell_adhesion"),
+			("targetVol", "target_volume"),
+			("volume", "volume"),
+			("strainRate", "strain_rate"),
+			("startVol", "start_volume"),
+		]
 
-		writer = PackedCellWriter()
-		writer.write_header(len(cell_states))
-
-		for it in cell_states.keys():
-			state = cell_states[it]
-
-			writer.write_cell(PackedCell.from_cellmodeller4(state))
-
-		with open(path, "wb") as out_file:
-			writer.flush_to_file(out_file)
+		sv_format.write_states(path, self.simulation.cellStates, "id", ATTRIBUTES_TO_PACK)
 
 	def _write_viz_frame(self, path):
 		cell_states = self.simulation.cellStates
@@ -62,8 +65,7 @@ class CellModeller4Backend(SimulationBackend):
 
 			# The length is computed differenty in CellModeller4 and CellModeller5. The front-end 
 			# expects that the length will be calculated based on how its done in CM5.
-			final_length = state.length + 1.0 - 2.0 * state.radius
-			final_length = 0 if final_length <= 0 else final_length
+			final_length = max(state.length + 1.0 - 2.0 * state.radius, 0)
 
 			byte_buffer.write(struct.pack("<fff", state.pos[0], -state.pos[2], state.pos[1]))
 			byte_buffer.write(struct.pack("<fff", state.dir[0],  state.dir[2], state.dir[1]))
