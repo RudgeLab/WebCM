@@ -20,7 +20,7 @@
 				<div id="viewer-toolbar">
 					<div id="timeline-header">
 						<div class="item-background" style="width: 100%">
-							<input type="range" id="frame-timeline" class="force-input">
+							<input type="range" id="frame-timeline">
 						</div>
 						<ul id="timeline-controls">
 							<li>
@@ -32,7 +32,7 @@
 							</li>
 							<li>
 								<div class="item-background">
-									<input type="checkbox" id="snap-to-last" name="snap-to-last" class="force-input" checked>
+									<input type="checkbox" id="snap-to-last" name="snap-to-last" checked>
 									<label for="snap-to-last">Snap to last step</label>
 								</div>
 							</li>
@@ -52,7 +52,7 @@
 						<tr><td>Time</td><td id="simdets-time">0</td></tr>
 						<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
 						<tr><td>Thin outlines</td><td>
-							<input type="checkbox" id="thin-cell-outlines" class="force-input">
+							<input type="checkbox" id="thin-cell-outlines">
 						</td></tr>
 					</tbody>
 					<tbody id="cell-details-header">
@@ -65,14 +65,14 @@
 					</tbody>
 				</table>
 			</div>
-			<div id="button-container" class="item-background force-input">
+			<div id="button-container" class="item-background">
 				<button id="source-btn">Edit source</button>
 				{% if is_online %}
 				<button id="reload-btn">Reload</button>
 				<button id="stop-btn">Stop</button>
 				{% endif %}
 			</div>
-			<div id="message-log-container" class="item-background force-input">
+			<div id="message-log-container" class="item-background">
 				<div>
 					<p id="message-log-title">Initialization Log</p>
 					<textarea id="message-log-text" readonly></textarea>
