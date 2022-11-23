@@ -43,7 +43,7 @@ def cell_info_from_index(request):
 	(step_file, viz_file) = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
 	cell_data = sv_format.read_state_with_id(step_file, int(cellid))
 
-	response_content = json.dumps(cell_data.create_readable_dict())
+	response_content = json.dumps(cell_data.create_display_dict())
 	response = HttpResponse(response_content, content_type="application/json")
 	response["Content-Length"] = len(response_content)
 

@@ -1,6 +1,6 @@
 from .backend import SimulationBackend
 
-from saveviewer import format as sv_format
+from saveviewer import format as svformat
 
 import io
 import os
@@ -55,6 +55,8 @@ class CellModeller4Backend(SimulationBackend):
 
 	def _write_step_frame(self, path):
 		ATTRIBUTES_TO_PACK = [
+			("pos", "position"),
+			("dir", "direction"),
 			("radius", "radius"),
 			("length", "length"),
 			("growthRate", "growth_rate"),
@@ -68,7 +70,7 @@ class CellModeller4Backend(SimulationBackend):
 			("startVol", "start_volume"),
 		]
 
-		sv_format.write_states(path, self.simulation.cellStates, "id", ATTRIBUTES_TO_PACK)
+		svformat.write_states(path, self.simulation.cellStates, "id", ATTRIBUTES_TO_PACK)
 
 	def _write_viz_frame(self, path):
 		cell_states = self.simulation.cellStates

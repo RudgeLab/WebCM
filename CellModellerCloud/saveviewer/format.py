@@ -5,6 +5,8 @@ import numpy
 class PackedCell:
 	def __init__(self):
 		self.id = 0
+		self.position = [ 0, 0, 0 ]
+		self.direction = [ 0, 0, 0 ]
 		self.radius = 0.0
 		self.length = 0.0
 		self.growth_rate = 0.0
@@ -17,7 +19,7 @@ class PackedCell:
 		self.strain_rate = 0.0
 		self.start_volume = 0.0
 
-	def create_readable_dict(self):
+	def create_display_dict(self):
 		output = {
 			"Cell Id": self.id,
 			"Radius": self.radius,
@@ -39,6 +41,8 @@ class PackedCell:
 	def from_named_entries(entries):
 		cell = PackedCell()
 		cell.id = entries.get("id")
+		cell.position = entries.get("position")
+		cell.direction = entries.get("direction")
 		cell.radius = entries.get("radius")
 		cell.length = entries.get("length")
 		cell.growth_rate = entries.get("growth_rate")
@@ -52,6 +56,44 @@ class PackedCell:
 		cell.start_volume = entries.get("start_volume")
 
 		return cell
+
+
+def write_states_to_csv(path, states):
+	with open(path, "w") as output:
+		output.write("id,")
+		output.write("position x,position y,position z,")
+		output.write("direction x,direction y,direction z,")
+		output.write("radius,")
+		output.write("length,")
+		output.write("growth_rate,")
+		output.write("cell_age,")
+		output.write("eff_growth,")
+		output.write("cell_type,")
+		output.write("cell_adhesion,")
+		output.write("target_volume,")
+		output.write("volume,")
+		output.write("strain_rate,")
+		output.write("start_volume,")
+		output.write("\n")
+
+		for cell in states:
+			output.write(f"{cell.id},")
+			output.write(f"{cell.position[0]},{cell.position[1]},{cell.position[2]},")
+			output.write(f"{cell.direction[0]},{cell.direction[1]},{cell.direction[2]},")
+			output.write(f"{cell.radius},")
+			output.write(f"{cell.length},")
+			output.write(f"{cell.growth_rate},")
+			output.write(f"{cell.cell_age},")
+			output.write(f"{cell.eff_growth},")
+			output.write(f"{cell.cell_type},")
+			output.write(f"{cell.cell_adhesion},")
+			output.write(f"{cell.target_volume},")
+			output.write(f"{cell.volume},")
+			output.write(f"{cell.strain_rate},")
+			output.write(f"{cell.start_volume}")
+			output.write("\n")
+
+	return
 
 def write_states(path, cell_states, id_attribute, attributes_to_pack):
 	key_mappings = { "id": 0 }
@@ -92,6 +134,7 @@ def write_states(path, cell_states, id_attribute, attributes_to_pack):
 		packed_data = msgpack.packb(output_object, default=default)
 
 		out_file.write(zlib.compress(packed_data, 2))
+
 
 def __read_state_internal(path, target_id):
 	raw_data = None
