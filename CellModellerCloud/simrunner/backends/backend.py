@@ -20,9 +20,12 @@ class SimulationBackend:
 
 	def initialize(self):
 		pass
-	
+
 	def step(self):
 		pass
+	
+	def get_shape_list(self):
+		return []
 
 	def write_step_pickle(self):
 		return ""

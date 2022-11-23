@@ -49,6 +49,18 @@ def cell_info_from_index(request):
 
 	return response
 
+def shape_list(request):
+	if not "uuid" in request.GET:
+		return HttpResponseBadRequest("No simulation UUID provided")
+
+	index_data = archiver.get_instance_index_data(UUID(request.GET["uuid"]))
+
+	response_content = json.dumps(index_data["shape_list"])
+	response = HttpResponse(response_content, content_type="application/json")
+	response["Content-Length"] = len(response_content)
+
+	return response
+
 def get_simulation_source(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")

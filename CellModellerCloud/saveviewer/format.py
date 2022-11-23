@@ -93,7 +93,7 @@ def write_states(path, cell_states, id_attribute, attributes_to_pack):
 
 		out_file.write(zlib.compress(packed_data, 2))
 
-def read_state_with_id(path, target_id):
+def __read_state_internal(path, target_id):
 	raw_data = None
 
 	# Read and unpack the file
@@ -105,11 +105,26 @@ def read_state_with_id(path, target_id):
 	# Create reverse key mappings
 	reverse_key_mappings = { value:key for (key, value) in unpacked_data["key_mappings"].items() }
 
-	# Find the required cell
-	for state in unpacked_data["states"]:
-		if not state[0] == target_id:
-			continue
+	if target_id is None:
+		unpacked_cells = []
 
-		return PackedCell.from_named_entries({ reverse_key_mappings[key]:value for (key, value) in state.items() })
+		for state in unpacked_data["states"]:
+			unpacked_cells.append( PackedCell.from_named_entries({ reverse_key_mappings[key]:value for (key, value) in state.items() }) )
+		
+		return unpacked_cells
+	else:
+		for state in unpacked_data["states"]:
+			if not state[0] == target_id:
+				continue
 
-	return None
+			return PackedCell.from_named_entries({ reverse_key_mappings[key]:value for (key, value) in state.items() })
+		return None
+
+
+def read_state_with_id(path, target_id):
+	assert not target_id is None
+
+	return __read_state_internal(path, target_id)
+
+def read_all_states(path):
+	return __read_state_internal(path, None)

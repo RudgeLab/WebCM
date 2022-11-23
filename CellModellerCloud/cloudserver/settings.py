@@ -80,6 +80,30 @@ WSGI_APPLICATION = 'cloudserver.wsgi.application'
 ASGI_APPLICATION = 'cloudserver.asgi.application'
 
 
+# Logging
+# https://docs.djangoproject.com/en/4.1/topics/logging/#topic-logging-parts-loggers
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    'handlers': {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": [ "console" ],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": [ "console" ],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+    },
+}
+
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 

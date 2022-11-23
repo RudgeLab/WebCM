@@ -330,6 +330,17 @@ export async function init(gl, context) {
 		"u_ProjectionMatrix", "u_ViewMatrix", "u_Color"
 	]);
 
+	//Load shape shader
+	const shapeVertexData = await fetch("/static/shaders/shape_shader.vert");
+	const shapeVertexSource = await shapeVertexData.text();
+
+	const shapeFragmentData = await fetch("/static/shaders/shape_shader.frag");
+	const shapeFragmentSource = await shapeFragmentData.text();
+
+	context["shapeShader"] = createShader(gl, shapeVertexSource, shapeFragmentSource, [
+		"u_ProjectionMatrix", "u_ViewMatrix", "u_Color", "u_ModelMatrix"
+	]);
+
 	//Generate grid
 	generateGrid(gl, context);
 
@@ -342,10 +353,17 @@ export async function init(gl, context) {
 	const bacteriumModel = await loadBacteriumModel(bacteriumGLTF, gl, context);
 
 	context["bacteriumMesh"] = bacteriumModel;
+
+	//Load the sphere
+	const sphereData = await fetch("/static/sphere.gltf");
+	const sphereGLTF = await sphereData.json();
+	const sphereModel = await loadBacteriumModel(sphereGLTF, gl, context);
+
+	context["sphereMesh"] = sphereModel;
 }
 
 function prepassScene(gl, context, delta) {
-
+	
 }
 
 function renderScene(gl, context, delta) {
@@ -376,14 +394,19 @@ function renderScene(gl, context, delta) {
 		gl.enable(gl.CULL_FACE);
 	}
 
-	/* Draw cells */
 	const cellShader = context["cellShader"];
-	const mesh = context["bacteriumMesh"];
+	const shapeShader = context["shapeShader"];
 
-	if (mesh == null || cellShader == null) {
-		return;
-	}
+	if (cellShader == null) return;
+	if (shapeShader == null) return;
 
+	const bacteriumMesh = context["bacteriumMesh"];
+	const sphereMesh = context["sphereMesh"];
+
+	if (bacteriumMesh == null) return;
+	if (sphereMesh == null) return;
+
+	/* Draw cells */
 	const withThinOutline = context["useThinOutlines"] ? 1 : 0;
 
 	gl.useProgram(cellShader["program"]);
@@ -394,9 +417,51 @@ function renderScene(gl, context, delta) {
 	gl.uniform1i(cellShader["uniforms"]["u_SelectedIndex"], context["selectedCellIndex"]);
 	gl.uniform1i(cellShader["uniforms"]["u_ThinOutlines"], withThinOutline);
 
-	gl.bindVertexArray(mesh.vao);
-	gl.drawElementsInstanced(gl.TRIANGLES, mesh.indexCount, mesh.indexType, 0, context["cellCount"]);
+	gl.bindVertexArray(bacteriumMesh.vao);
+	gl.drawElementsInstanced(gl.TRIANGLES, bacteriumMesh.indexCount, bacteriumMesh.indexType, 0, context["cellCount"]);
 	gl.bindVertexArray(null);
+
+	/* Draw shpes */
+	gl.depthMask(false);
+
+	const shapeList = context["shapeList"];
+
+	for (let i = 0; i < shapeList.length; i++) {
+		const shape = shapeList[i];
+		const isSphere = shape["type"] == "sphere";
+
+		//NOTE: The transparency technique we have right now works ok as long as
+		//      the color of each shape is the same. If we want each shape to have
+		//      its own color, we'll have to use another technique, like depth peeling
+		let sphereColor = vec4.fromValues(0.8, 0.8, 0.8, 0.8);
+		let shapePos = vec3.fromValues(0, 0, 0);
+		let shapeRot = quat.create();
+		let shapeScale = vec3.fromValues(1, 1, 1);
+	
+		if (isSphere) {
+			const pos = shape["pos"];
+			const radius = shape["radius"];
+
+			shapePos = vec3.fromValues(pos[0], pos[1], pos[2]);
+			shapeScale = vec3.fromValues(radius, radius, radius);
+		}
+
+		const shapeModelMatrix = mat4.fromRotationTranslationScale(mat4.create(), shapeRot, shapePos, shapeScale);
+	
+		gl.useProgram(shapeShader["program"]);
+		gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
+		gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
+		gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ModelMatrix"], false, shapeModelMatrix);
+		gl.uniform4f(shapeShader["uniforms"]["u_Color"], sphereColor[0], sphereColor[1], sphereColor[2], sphereColor[3]);
+	
+		if (isSphere) {
+			gl.bindVertexArray(sphereMesh.vao);
+			gl.drawElements(gl.TRIANGLES, sphereMesh.indexCount, sphereMesh.indexType, 0);
+			gl.bindVertexArray(null);
+		}
+	}
+
+	gl.depthMask(true);
 }
 
 export function resize(gl, context, canvas) {
@@ -448,6 +513,9 @@ export function drawFrame(gl, context, delta) {
 
 	/**** Bind MSAA framebuffer ****/
 	const renderTargetFBO = context["msaa"]["renderTargetFBO"];
+
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.enable(gl.BLEND);
 
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);

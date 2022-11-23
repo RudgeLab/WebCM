@@ -2,7 +2,6 @@ from .backend import SimulationBackend
 
 import os
 import importlib
-import sys
 import time
 
 class CellModeller5Backend(SimulationBackend):

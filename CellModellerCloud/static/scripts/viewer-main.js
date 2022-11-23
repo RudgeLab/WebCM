@@ -45,6 +45,13 @@ function appendInitLogMessage(message) {
 	textArea.scrollTop = textArea.scrollHeight;
 }
 
+async function requestShapes(context, uuid) {
+	const data = await fetch(`/api/saveviewer/shapelist?uuid=${uuid}`);
+	const buffer = await data.json();
+
+	context["shapeList"] = buffer;
+}
+
 async function requestFrame(context, uuid, index) {
 	context["currentFrameIndex"] = index;
 
@@ -126,6 +133,8 @@ function connectToServer(context) {
 				setStatusMessage("Offline");
 				setSimName(data.name);
 				
+				await requestShapes(context, context["simUUID"]);
+
 				if (data.frameCount > 0) {
 					await requestFrame(context, context["simUUID"], 0);
 				}
@@ -145,6 +154,8 @@ function connectToServer(context) {
 
 					context["timelineSlider"].value = frameCount;
 				}
+			} else if (action === "newshape") {
+				await requestShapes(context, context["simUUID"]);
 			} else if (action === "infolog") {
 				openInitLogWindow(context, "Initialization Log");
 				appendInitLogMessage(data);
@@ -396,6 +407,9 @@ async function initFrame(gl, context) {
 		"frameCount": 0
 	};
 
+	//Initialize shape list
+	context["shapeList"] = [];
+
 	//Initialize timeline slider 
 	const timelineSlider = document.getElementById("frame-timeline");
 	timelineSlider.oninput = function() { processTimelineChange(this.value, context); };
@@ -598,7 +612,7 @@ function attachResizeBehavior(context, canvas) {
 async function main() {
 	//Create canvas
 	const canvas = document.getElementById("renderTargetCanvas");
-	const gl = canvas.getContext("webgl2", {antialias: false});
+	const gl = canvas.getContext("webgl2", { antialias: false });
 	
 	if (gl === null) {
 		alert("Unable to initialize WebGL");

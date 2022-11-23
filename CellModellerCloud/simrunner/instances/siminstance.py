@@ -80,6 +80,10 @@ class SimulationInstance:
 			archiver.update_instance_index(self.uuid, data["new_data"])
 
 			self.send_message_to_clients(clientmessages.NewFrame(data["frame_count"]))
+		elif action == "newshape":
+			archiver.update_instance_index(self.uuid, data["new_data"])
+
+			self.send_message_to_clients(clientmessages.NewShape())
 		elif action == "error_message":
 			self.send_message_to_clients(clientmessages.ErrorMessage(data))
 		elif action == "close":
@@ -201,6 +205,11 @@ def instance_control_thread(pipe, instance_params):
 
 			# Run the backend
 			backend.initialize()
+
+			# Write shapes
+			index_data = archiver.write_shapes_to_sim_index(index_path, backend.get_shape_list())
+			
+			send_message_to_control({ "newshape": { "new_data": index_data } })
 
 			while running and backend.is_running() and not needs_reload:
 				# Take another step in the simulation

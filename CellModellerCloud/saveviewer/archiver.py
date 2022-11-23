@@ -97,7 +97,8 @@ def write_empty_index_file(path, backend_version):
 		"vizframes": {},
 		"stepframes": {},
 		"num_frames": 0,
-		"backend_version": backend_version
+		"backend_version": backend_version,
+		"shape_list": [],
 	}
 
 	sim_data_str = json.dumps(init_index_data)
@@ -107,22 +108,37 @@ def write_empty_index_file(path, backend_version):
 
 	return init_index_data
 
-def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
+
+def __update_sim_index(index_path, callback):
 	with open(index_path, "r+") as index_file:
 		sim_data = json.loads(index_file.read())
-
-		frame_count = len(sim_data["vizframes"])
-		sim_data["vizframes"][frame_count] = viz_bin_file
-		sim_data["stepframes"][frame_count] = step_file
-		sim_data["num_frames"] = frame_count + 1
-
+		return_value = callback(sim_data)
 		sim_data_str = json.dumps(sim_data)
 
 		index_file.seek(0)
 		index_file.write(sim_data_str)
 		index_file.truncate()
 
-	return (sim_data, frame_count)
+	return return_value
+
+def write_shapes_to_sim_index(index_path, shape_list):
+	def update_action(sim_data):
+		sim_data["shape_list"] = shape_list
+
+		return sim_data
+	
+	return __update_sim_index(index_path, update_action)
+
+def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
+	def update_action(sim_data):
+		frame_count = len(sim_data["vizframes"])
+		sim_data["vizframes"][frame_count] = viz_bin_file
+		sim_data["stepframes"][frame_count] = step_file
+		sim_data["num_frames"] = frame_count + 1
+
+		return (sim_data, frame_count)
+
+	return __update_sim_index(index_path, update_action)
 
 def read_simulation_source(uuid):
 	simulation = get_simulation(uuid)

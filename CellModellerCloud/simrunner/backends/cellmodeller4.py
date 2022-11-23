@@ -14,14 +14,17 @@ class CellModeller4Backend(SimulationBackend):
 
 		self.params = params
 		self.simulation = None
+		self.sim_module = None
+		self.render_module = None
 	
 	def initialize(self):
 		# We cannot import CellModeller the traditional way because we want the users to be able to run
 		# the server even if they don't have all the versions of CellModeller installed.
-		module = importlib.import_module("CellModeller.Simulator")
+		self.sim_module = importlib.import_module("CellModeller.Simulator")
+		self.render_module = importlib.import_module("CellModeller.GUI.Renderers")
 
 		# Setup simulator properties
-		self.simulation = module.Simulator(self.params.name, self.params.delta_time, moduleStr=self.params.source, clPlatformNum=0, clDeviceNum=0, is_gui=False, saveOutput=False)
+		self.simulation = self.sim_module.Simulator(self.params.name, self.params.delta_time, moduleStr=self.params.source, clPlatformNum=0, clDeviceNum=0, is_gui=False, saveOutput=False)
 		self.simulation.outputDirPath = self.params.sim_root_dir
 
 		if self.simulation.moduleStr:
@@ -31,6 +34,24 @@ class CellModeller4Backend(SimulationBackend):
 	
 	def step(self):
 		self.simulation.step()
+	
+	def get_shape_list(self):
+		# Deal with older versions of CellModeller that don't have WebRenderer
+		if not "WebRenderer" in vars(self.render_module):
+			return []
+
+		for renderer in self.simulation.renderers:
+			if not type(renderer) is self.render_module.WebRenderer:
+				continue
+			
+			shapes_list = []
+
+			for sphere in renderer.spheres:
+				shapes_list.append({ "type": "sphere", "pos":  sphere.position, "radius": sphere.radius })
+
+			return shapes_list
+
+		return []
 
 	def _write_step_frame(self, path):
 		ATTRIBUTES_TO_PACK = [
