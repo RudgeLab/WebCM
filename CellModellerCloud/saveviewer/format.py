@@ -18,6 +18,8 @@ class PackedCell:
 		self.volume = 0.0
 		self.strain_rate = 0.0
 		self.start_volume = 0.0
+		self.species = None # []
+		self.signals = None # []
 
 	def create_display_dict(self):
 		output = {
@@ -33,6 +35,8 @@ class PackedCell:
 			"Volume": self.volume,
 			"Strain rate": self.strain_rate,
 			"Start volume": self.start_volume,
+			"Species": self.species,
+			"Signals": self.signals,
 		}
 
 		return dict(filter(lambda val: not val[1] is None, output.items()))
@@ -54,12 +58,21 @@ class PackedCell:
 		cell.volume = entries.get("volume")
 		cell.strain_rate = entries.get("strain_rate")
 		cell.start_volume = entries.get("start_volume")
+		cell.species = entries.get("species")
+		cell.signals = entries.get("signals")
 
 		return cell
 
 
 def write_states_to_csv(path, states):
 	with open(path, "w") as output:
+		def write_optional(val):
+			if not val is None: 
+				output.write(str(val))
+
+			# if not is_last:
+			output.write(",")
+
 		output.write("id,")
 		output.write("position x,position y,position z,")
 		output.write("direction x,direction y,direction z,")
@@ -74,23 +87,39 @@ def write_states_to_csv(path, states):
 		output.write("volume,")
 		output.write("strain_rate,")
 		output.write("start_volume,")
+		output.write("species,")
+		output.write("signals,")
 		output.write("\n")
 
 		for cell in states:
-			output.write(f"{cell.id},")
-			output.write(f"{cell.position[0]},{cell.position[1]},{cell.position[2]},")
-			output.write(f"{cell.direction[0]},{cell.direction[1]},{cell.direction[2]},")
-			output.write(f"{cell.radius},")
-			output.write(f"{cell.length},")
-			output.write(f"{cell.growth_rate},")
-			output.write(f"{cell.cell_age},")
-			output.write(f"{cell.eff_growth},")
-			output.write(f"{cell.cell_type},")
-			output.write(f"{cell.cell_adhesion},")
-			output.write(f"{cell.target_volume},")
-			output.write(f"{cell.volume},")
-			output.write(f"{cell.strain_rate},")
-			output.write(f"{cell.start_volume}")
+			write_optional(cell.id)
+
+			if not cell.position is None:
+				output.write(f"{cell.position[0]},{cell.position[1]},{cell.position[2]},")
+			else:
+				output.write(",,,")
+
+			if not cell.direction is None:
+				output.write(f"{cell.direction[0]},{cell.direction[1]},{cell.direction[2]},")
+			else:
+				output.write(",,,")
+
+			write_optional(cell.radius)
+			write_optional(cell.length)
+			write_optional(cell.growth_rate)
+			write_optional(cell.cell_age)
+			write_optional(cell.eff_growth)
+			write_optional(cell.cell_type)
+			write_optional(cell.cell_adhesion)
+			write_optional(cell.target_volume)
+			write_optional(cell.volume)
+			write_optional(cell.strain_rate)
+			write_optional(cell.start_volume)
+
+			# TODO: Dynamic arrays
+			write_optional(cell.species)
+			write_optional(cell.signals)
+			
 			output.write("\n")
 
 	return
@@ -127,6 +156,8 @@ def write_states(path, cell_states, id_attribute, attributes_to_pack):
 	def default(obj):
 		if isinstance(obj, numpy.float32):
 			return float(obj)
+		elif isinstance(obj, numpy.ndarray):
+			return list(obj)
 		
 		raise TypeError(f"Could not pack type: {type(obj)}")
 

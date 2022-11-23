@@ -205,6 +205,25 @@ function processTimelineChange(value, context) {
 	requestFrame(context, context["simUUID"], value - 1);
 }
 
+function customFormat(value) {
+	if (typeof value == 'number') {
+		const magnitude = Math.pow(10, 5);
+
+		return String(Math.floor(value * magnitude) / magnitude);
+	} else if (Array.isArray(value)) {
+		let content = "";
+		console.log(value);
+
+		for (let i = 0; i < value.length; i++) {
+			content += customFormat(value[i]);
+
+			if (i + 1 < value.length) content += ", ";
+		}
+
+		return "[ " + content + " ]";
+	}
+}
+
 async function updateCellInfo(context) {
 	const cellIndex = context["selectedCellIndex"];
 
@@ -226,13 +245,7 @@ async function updateCellInfo(context) {
 
 		for (const key in cellProps) {
 			const value = cellProps[key];
-
-			let text = value;
-			if (typeof value == 'number') {
-				const magnitude = Math.pow(10, 5);
-
-				text = Math.floor(value * magnitude) / magnitude;;
-			}
+			const text = customFormat(value);
 
 			cellText += `<tr><td>${key}</td><td>${text}</td></tr>`;
 		}

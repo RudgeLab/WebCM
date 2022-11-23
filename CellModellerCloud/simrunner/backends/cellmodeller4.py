@@ -68,6 +68,8 @@ class CellModeller4Backend(SimulationBackend):
 			("volume", "volume"),
 			("strainRate", "strain_rate"),
 			("startVol", "start_volume"),
+			("species", "species"),
+			("signals", "signals"),
 		]
 
 		svformat.write_states(path, self.simulation.cellStates, "id", ATTRIBUTES_TO_PACK)
