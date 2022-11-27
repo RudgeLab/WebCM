@@ -35,6 +35,7 @@ SITE_ID = 1
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'cloudserver.apps.MainAppConfig',
     'saveviewer.apps.SaveViewerConfig',
     'simrunner.apps.SimRunnerConfig',
@@ -79,6 +80,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'cloudserver.wsgi.application'
 ASGI_APPLICATION = 'cloudserver.asgi.application'
 
+
+# Channels
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    },
+}
 
 # Logging
 # https://docs.djangoproject.com/en/4.1/topics/logging/#topic-logging-parts-loggers
