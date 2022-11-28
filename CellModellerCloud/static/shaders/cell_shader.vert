@@ -1,5 +1,3 @@
-#version 300 es
-
 #pragma vscode_glsllint_stage : vert
 #define MATH_PI (3.14159265359)
 

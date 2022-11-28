@@ -388,8 +388,8 @@ async function initFrame(gl, context) {
 		"orbitLookSensitivity": 0.4,
 		"orbitRadiusSensitivity": 0.02,
 
-		"fovAngle": 70.0,
-		"nearZ": 0.03,
+		"fovAngle": 60.0,
+		"nearZ": 0.1,
 		"farZ": 2000.0,
 		"position": vec3.fromValues(0, 3.0, 10.0),
 		"rotation": quat.create(),
@@ -422,6 +422,12 @@ async function initFrame(gl, context) {
 
 	//Initialize shape list
 	context["shapeList"] = [];
+
+	//Initialize depth peeling
+	context["depthPeeling"] = {
+		"layerCount": 5,
+		"depthCompareBias": 0.000001
+	};
 
 	//Initialize timeline slider 
 	const timelineSlider = document.getElementById("frame-timeline");
@@ -496,6 +502,12 @@ function processKeyButton(event, context, isdown) {
 	var input = context["input"];
 
 	switch (event.code) {
+	case "KeyQ":
+		input["isQPressed"] = isdown;
+		break;
+	case "KeyE":
+		input["isEPressed"] = isdown;
+		break;
 	case "ShiftLeft":
 	case "ShiftRight":
 		input["shiftPressed"] = isdown;

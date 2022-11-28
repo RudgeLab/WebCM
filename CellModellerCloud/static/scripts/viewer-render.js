@@ -1,13 +1,28 @@
-function createShader(gl, vsSource, fsSource, uniforms) {
+function prepareShaderSource(source, defines) {
+	let finalSource = "#version 300 es\n";
+
+	for (let i = 0; i < defines.length; i++) {
+		finalSource = finalSource.concat(`#define ${defines[i]}\n`);
+	}
+
+	return finalSource.concat(source);
+}
+
+function createShader(gl, vsSource, fsSource, uniforms, defines=[]) {
+	const vsFinalSource = prepareShaderSource(vsSource, defines);
+	const fsFinalSource = prepareShaderSource(fsSource, defines);
+
 	const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-	gl.shaderSource(vertexShader, vsSource);
+	gl.shaderSource(vertexShader, vsFinalSource);
 	gl.compileShader(vertexShader);
 	
 	const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-	gl.shaderSource(fragmentShader, fsSource);
+	gl.shaderSource(fragmentShader, fsFinalSource);
 	gl.compileShader(fragmentShader);
 	
 	if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+		console.log(vsFinalSource);
+
 		alert("Vertex shader error: " + gl.getShaderInfoLog(vertexShader));
 
 		gl.deleteShader(vertexShader);
@@ -16,6 +31,8 @@ function createShader(gl, vsSource, fsSource, uniforms) {
 	}
 	
 	if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+		console.log(fsFinalSource);
+
 		alert("Fragment shader error: " + gl.getShaderInfoLog(fragmentShader));
 
 		gl.deleteShader(vertexShader);
@@ -307,39 +324,93 @@ export function lookupCellIdentifier(context, index) {
 	return dataView.getBigUint64(baseOffset, true);
 }
 
+async function fetchOrThrow(resource, options=null) {
+	const response = options !== null ? (await fetch(resource, options)) : (await fetch(resource));
+
+	if (!response.ok) throw `Reqeuset to ${resource} failed with status ${response.status}`;
+	else return response
+}
+
 export async function init(gl, context) {
 	//Load cell shader
-	const cellVertexData = await fetch("/static/shaders/cell_shader.vert");
-	const cellVertexSource = await cellVertexData.text();
-
-	const cellFragmentData = await fetch("/static/shaders/cell_shader.frag");
-	const cellFragmentSource = await cellFragmentData.text();
-
-	context["cellShader"] = createShader(gl, cellVertexSource, cellFragmentSource, [
-		"u_ProjectionMatrix", "u_ViewMatrix", "u_CameraPos", "u_SelectedIndex", "u_ThinOutlines"
-	]);
+	const fetchCellShader = async () => {
+		const cellVertexData = await fetchOrThrow("/static/shaders/cell_shader.vert");
+		const cellVertexSource = await cellVertexData.text();
+	
+		const cellFragmentData = await fetchOrThrow("/static/shaders/cell_shader.frag");
+		const cellFragmentSource = await cellFragmentData.text();
+	
+		context["cellShader"] = createShader(gl, cellVertexSource, cellFragmentSource, [
+			"u_ProjectionMatrix", "u_ViewMatrix", "u_CameraPos", "u_SelectedIndex", "u_ThinOutlines"
+		]);
+	};
 
 	//Load grid shader
-	const gridVertexData = await fetch("/static/shaders/grid_shader.vert");
-	const gridVertexSource = await gridVertexData.text();
+	const fetchGridShader = async () => {
+		const gridVertexData = await fetchOrThrow("/static/shaders/grid_shader.vert");
+		const gridVertexSource = await gridVertexData.text();
 
-	const gridFragmentData = await fetch("/static/shaders/grid_shader.frag");
-	const gridFragmentSource = await gridFragmentData.text();
+		const gridFragmentData = await fetchOrThrow("/static/shaders/grid_shader.frag");
+		const gridFragmentSource = await gridFragmentData.text();
 
-	context["gridShader"] = createShader(gl, gridVertexSource, gridFragmentSource, [
-		"u_ProjectionMatrix", "u_ViewMatrix", "u_Color"
-	]);
-
+		context["gridShader"] = createShader(gl, gridVertexSource, gridFragmentSource, [
+			"u_ProjectionMatrix", "u_ViewMatrix", "u_Color"
+		]);
+	};
+	
 	//Load shape shader
-	const shapeVertexData = await fetch("/static/shaders/shape_shader.vert");
-	const shapeVertexSource = await shapeVertexData.text();
+	const fetchShapeShader = async () => {
+		const shapeVertexData = await fetchOrThrow("/static/shaders/shape_shader.vert");
+		const shapeVertexSource = await shapeVertexData.text();
 
-	const shapeFragmentData = await fetch("/static/shaders/shape_shader.frag");
-	const shapeFragmentSource = await shapeFragmentData.text();
+		const shapeFragmentData = await fetchOrThrow("/static/shaders/shape_shader.frag");
+		const shapeFragmentSource = await shapeFragmentData.text();
 
-	context["shapeShader"] = createShader(gl, shapeVertexSource, shapeFragmentSource, [
-		"u_ProjectionMatrix", "u_ViewMatrix", "u_Color", "u_ModelMatrix"
-	]);
+		context["shapeShader"] = createShader(gl, shapeVertexSource, shapeFragmentSource, [
+			"u_ProjectionMatrix", "u_ViewMatrix", "u_ModelMatrix",
+			"u_Color", "u_ClosestDepth", "u_TreatAsOpaque", "u_DepthCompareBias"
+		]);
+	};
+
+	//Load debug shader
+	const fetchDebugShader = async () => {
+		const composeVertexData = await fetchOrThrow("/static/shaders/dp_composite_shader.vert");
+		const composeVertexSource = await composeVertexData.text();
+	
+		const composeFragmentData = await fetchOrThrow("/static/shaders/dp_composite_shader.frag");
+		const composeFragmentSource = await composeFragmentData.text();
+	
+		context["composeShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
+			"u_ProjectionMatrix", "u_ViewMatrix", "u_ColorTexture"
+		]);
+	};
+
+	//Load the bacterium
+	const fetchBacteriumModel = async () => {
+		const bacteriumData = await fetchOrThrow("/static/bacterium.gltf");
+		const bacteriumGLTF = await bacteriumData.json();
+		const bacteriumModel = await loadBacteriumModel(bacteriumGLTF, gl, context);
+	
+		context["bacteriumMesh"] = bacteriumModel;
+	};
+
+	//Load the sphere
+	const fetchSphereModel = async () => {
+		const sphereData = await fetchOrThrow("/static/sphere.gltf");
+		const sphereGLTF = await sphereData.json();
+		const sphereModel = await loadBacteriumModel(sphereGLTF, gl, context);
+
+		context["sphereMesh"] = sphereModel;
+	};
+
+	//Load the plane
+	const fetchPlaneModel = async () => {
+		const planeData = await fetchOrThrow("/static/plane.gltf");
+		const planeGLTF = await planeData.json();
+		const planeModel = await loadBacteriumModel(planeGLTF, gl, context);
+
+		context["planeMesh"] = planeModel;
+	};
 
 	//Generate grid
 	generateGrid(gl, context);
@@ -347,66 +418,156 @@ export async function init(gl, context) {
 	context["cellCount"] = 0;
 	context["cellData"] = null;
 
-	//Load the bacterium
-	const bacteriumData = await fetch("/static/bacterium.gltf");
-	const bacteriumGLTF = await bacteriumData.json();
-	const bacteriumModel = await loadBacteriumModel(bacteriumGLTF, gl, context);
-
-	context["bacteriumMesh"] = bacteriumModel;
-
-	//Load the sphere
-	const sphereData = await fetch("/static/sphere.gltf");
-	const sphereGLTF = await sphereData.json();
-	const sphereModel = await loadBacteriumModel(sphereGLTF, gl, context);
-
-	context["sphereMesh"] = sphereModel;
+	await Promise.all([
+		fetchCellShader(),
+		fetchGridShader(),
+		fetchShapeShader(),
+		fetchDebugShader(),
+		fetchBacteriumModel(),
+		fetchSphereModel(),
+		fetchPlaneModel(),
+	]);
 }
 
-function prepassScene(gl, context, delta) {
+function createTextureAttachment(gl, width, height, internalFormat, format, type) {
+	const texture = gl.createTexture();
 	
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, null);
+
+	gl.bindTexture(gl.TEXTURE_2D, null);
+
+	return texture;
 }
 
-function renderScene(gl, context, delta) {
+function recreateOpaqueFBO(gl, context) {
+	if (context["opaque"] != null) {
+		gl.deleteTexture(context["opaque"]["opaqueColor"]);
+		gl.deleteTexture(context["opaque"]["opaqueDepth"]);
+		gl.deleteFramebuffer(context["opaque"]["fbo"]);
+	}
+
+	const width = gl.canvas.width;
+	const height = gl.canvas.height;
+
+	const colorTexture = createTextureAttachment(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+	const depthTexture = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
+
+	const framebuffer = gl.createFramebuffer();
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
+	
+	gl.drawBuffers([ gl.COLOR_ATTACHMENT0 ]);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	
+	context["opaque"] = {
+		"colorTexture": colorTexture,
+		"depthTexture": depthTexture,
+		"fbo": framebuffer
+	};
+}
+
+function recreateTransparentFBO(gl, context) {
+	if (context["transparent"] != null) {
+		gl.deleteTexture(context["transparent"]["colorTexture"]);
+		gl.deleteTexture(context["transparent"]["depthTexture"]);
+		gl.deleteFramebuffer(context["transparent"]["fbo"]);
+	}
+
+	const width = gl.canvas.width;
+	const height = gl.canvas.height;
+
+	const colorTexture = createTextureAttachment(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+	const depthTexture = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
+
+	const framebuffer = gl.createFramebuffer();
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
+	
+	gl.drawBuffers([ gl.COLOR_ATTACHMENT0 ]);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	
+	context["transparent"] = {
+		"colorTexture": colorTexture,
+		"depthTexture": depthTexture,
+		"fbo": framebuffer
+	};
+}
+
+function recreatePeelFBO(gl, context) {
+	if (context["peel"] != null) {
+		gl.deleteTexture(context["peel"]["colorTexture"]);
+		gl.deleteTexture(context["peel"]["depthTexture"]);
+		gl.deleteFramebuffer(context["peel"]["fbo"]);
+	}
+
+	const width = gl.canvas.width;
+	const height = gl.canvas.height;
+
+	const colorTexture = createTextureAttachment(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+	const depthTexture = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
+
+	const framebuffer = gl.createFramebuffer();
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
+	
+	gl.drawBuffers([ gl.COLOR_ATTACHMENT0 ]);
+	
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	
+	context["peel"] = {
+		"colorTexture": colorTexture,
+		"depthTexture": depthTexture,
+		"fbo": framebuffer
+	};
+}
+
+export function resize(gl, context, canvas) {
+	recreateOpaqueFBO(gl, context);
+	recreateTransparentFBO(gl, context);
+	recreatePeelFBO(gl, context);
+}
+
+function drawScene(gl, context) {
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
 	const viewMatrix = camera["viewMatrix"];
 
 	const cameraPos = context["camera"]["position"];
 
-	/* Draw grid */
+	//Draw grid
 	const gridShader = context["gridShader"];
 	const gridMesh = context["grid"];
+	const color = gridMesh["color"];
 
-	if (gridShader != null && gridMesh != null) {
-		const color = gridMesh["color"];
+	gl.disable(gl.CULL_FACE);
 
-		gl.disable(gl.CULL_FACE);
+	gl.useProgram(gridShader["program"]);
+	gl.uniformMatrix4fv(gridShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
+	gl.uniformMatrix4fv(gridShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
+	gl.uniform3f(gridShader["uniforms"]["u_Color"], color[0], color[1], color[2]);
 
-		gl.useProgram(gridShader["program"]);
-		gl.uniformMatrix4fv(gridShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
-		gl.uniformMatrix4fv(gridShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
-		gl.uniform3f(gridShader["uniforms"]["u_Color"], color[0], color[1], color[2]);
+	gl.bindVertexArray(gridMesh.vao);
+	gl.drawArrays(gl.TRIANGLES, 0, gridMesh.vertexCount);
+	gl.bindVertexArray(null);
 
-		gl.bindVertexArray(gridMesh.vao);
-		gl.drawArrays(gl.TRIANGLES, 0, gridMesh.vertexCount);
-		gl.bindVertexArray(null);
+	gl.enable(gl.CULL_FACE);
 
-		gl.enable(gl.CULL_FACE);
-	}
-
+	//Draw cells
 	const cellShader = context["cellShader"];
-	const shapeShader = context["shapeShader"];
-
-	if (cellShader == null) return;
-	if (shapeShader == null) return;
-
 	const bacteriumMesh = context["bacteriumMesh"];
-	const sphereMesh = context["sphereMesh"];
-
-	if (bacteriumMesh == null) return;
-	if (sphereMesh == null) return;
-
-	/* Draw cells */
 	const withThinOutline = context["useThinOutlines"] ? 1 : 0;
 
 	gl.useProgram(cellShader["program"]);
@@ -420,20 +581,17 @@ function renderScene(gl, context, delta) {
 	gl.bindVertexArray(bacteriumMesh.vao);
 	gl.drawElementsInstanced(gl.TRIANGLES, bacteriumMesh.indexCount, bacteriumMesh.indexType, 0, context["cellCount"]);
 	gl.bindVertexArray(null);
+}
 
-	/* Draw shpes */
-	gl.depthMask(false);
-
+function drawShapes(gl, context, shader) {
+	const sphereMesh = context["sphereMesh"];
 	const shapeList = context["shapeList"];
 
 	for (let i = 0; i < shapeList.length; i++) {
 		const shape = shapeList[i];
 		const isSphere = shape["type"] == "sphere";
 
-		//NOTE: The transparency technique we have right now works ok as long as
-		//      the color of each shape is the same. If we want each shape to have
-		//      its own color, we'll have to use another technique, like depth peeling
-		let sphereColor = vec4.fromValues(0.8, 0.8, 0.8, 0.8);
+		let shapeColor = vec4.fromValues(0.8, 0.8, 0.8, 0.8);
 		let shapePos = vec3.fromValues(0, 0, 0);
 		let shapeRot = quat.create();
 		let shapeScale = vec3.fromValues(1, 1, 1);
@@ -441,18 +599,17 @@ function renderScene(gl, context, delta) {
 		if (isSphere) {
 			const pos = shape["pos"];
 			const radius = shape["radius"];
+			const color = shape["color"];
 
 			shapePos = vec3.fromValues(pos[0], pos[1], pos[2]);
 			shapeScale = vec3.fromValues(radius, radius, radius);
+			if (color) shapeColor = vec4.fromValues(color[0], color[1], color[2], color[3]);
 		}
 
 		const shapeModelMatrix = mat4.fromRotationTranslationScale(mat4.create(), shapeRot, shapePos, shapeScale);
 	
-		gl.useProgram(shapeShader["program"]);
-		gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
-		gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
-		gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ModelMatrix"], false, shapeModelMatrix);
-		gl.uniform4f(shapeShader["uniforms"]["u_Color"], sphereColor[0], sphereColor[1], sphereColor[2], sphereColor[3]);
+		gl.uniformMatrix4fv(shader["uniforms"]["u_ModelMatrix"], false, shapeModelMatrix);
+		gl.uniform4f(shader["uniforms"]["u_Color"], shapeColor[0], shapeColor[1], shapeColor[2], shapeColor[3]);
 	
 		if (isSphere) {
 			gl.bindVertexArray(sphereMesh.vao);
@@ -460,86 +617,148 @@ function renderScene(gl, context, delta) {
 			gl.bindVertexArray(null);
 		}
 	}
-
-	gl.depthMask(true);
 }
 
-export function resize(gl, context, canvas) {
-	//We want to have anit-aliasing, but WebGL does not allow you to support MSAA 
-	//when rendering directly to the canvas. To solve this, we can create a second
-	//framebuffer with MSAA enabled, render the scene to it, resolve the MSAA samples,
-	//and then copy that to the canvas surface.
-	if (context["msaa"] != null) {
-		//Delete previous framebuffer
-		gl.deleteRenderbuffer(context["msaa"]["renderBuffer"]);
-		gl.deleteRenderbuffer(context["msaa"]["depthBuffer"]);
-		gl.deleteFramebuffer(context["msaa"]["renderTargetFBO"]);
-	}
+function blitFBO(gl, read, draw, width, height, clearFlags) {
+	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
+	gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
 
-	//Create framebuffer
-	const sampleCount = Math.min(gl.getParameter(gl.MAX_SAMPLES), 8);
+	gl.blitFramebuffer(0, 0, width, height,
+					   0, 0, width, height,
+					   clearFlags, gl.NEAREST);
+}
 
-	const renderBuffer = gl.createRenderbuffer();
-	const depthBuffer = gl.createRenderbuffer();
+function composeTransparentPass(gl, context, name, ignoreDepth=true, blending=true) {
+	const composeShader = context["composeShader"];
+	const planeMesh = context["planeMesh"];
 
-	gl.bindRenderbuffer(gl.RENDERBUFFER, renderBuffer);
-	gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.RGBA8, gl.canvas.width, gl.canvas.height);
+	if (blending) gl.enable(gl.BLEND);
+	if (ignoreDepth) gl.disable(gl.DEPTH_TEST);
 
-	gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
-	gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.DEPTH24_STENCIL8, gl.canvas.width, gl.canvas.height);
+	gl.disable(gl.CULL_FACE);
 
-	const renderTargetFBO = gl.createFramebuffer();
+	gl.useProgram(composeShader["program"]);
 
-	gl.bindFramebuffer(gl.FRAMEBUFFER, renderTargetFBO);
-	gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderBuffer);
-	gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer);
-	
-	gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, context[name]["colorTexture"]);
+	gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
 
-	context["msaa"] = {
-		"depthBuffer": depthBuffer,
-		"renderBuffer": renderBuffer,
-		"renderTargetFBO": renderTargetFBO
-	};
+	gl.bindVertexArray(planeMesh.vao);
+	gl.drawElements(gl.TRIANGLES, planeMesh.indexCount, planeMesh.indexType, 0);
+	gl.bindVertexArray(null);
+
+	gl.enable(gl.CULL_FACE);
+
+	if (ignoreDepth) gl.enable(gl.DEPTH_TEST);
+	if (blending) gl.disable(gl.BLEND);
 }
 
 export function drawFrame(gl, context, delta) {
-	/**** Prepass scene ****/
-	//Because the MSAA framebuffer is bound when calling `renderScene`, `renderScene` cannot perform any
-	//operations that would require rendering to another framebuffer. If a rendering operation needs to
-	//render to a custom framebuffer, then it can be put into `prepassScene`.
-	prepassScene(gl, context, delta);
+	const viewWidth = gl.canvas.width;
+	const viewHeight = gl.canvas.height;
 
-	/**** Bind MSAA framebuffer ****/
-	const renderTargetFBO = context["msaa"]["renderTargetFBO"];
+	const transparentFBO = context["transparent"]["fbo"];
+	const opaqueFBO = context["opaque"]["fbo"];
+	const peelFBO = context["peel"]["fbo"];
+	
+	const shapeShader = context["shapeShader"];
+	
+	const layerCount = context["depthPeeling"]["layerCount"];
+	
+	const camera = context["camera"];
+	const projMatrix = camera["projectionMatrix"];
+	const viewMatrix = camera["viewMatrix"];
 
-	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-	gl.enable(gl.BLEND);
-
+	//Setup scene
 	gl.enable(gl.DEPTH_TEST);
 	gl.enable(gl.CULL_FACE);
 	gl.cullFace(gl.BACK);
-	
-	gl.bindFramebuffer(gl.FRAMEBUFFER, renderTargetFBO);
 
-	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-	
+	/////////////////////////////////////////////////
+	// Render opaque objects
+	/////////////////////////////////////////////////
+	gl.bindFramebuffer(gl.FRAMEBUFFER, opaqueFBO);
+
+	gl.viewport(0, 0, viewWidth, viewHeight);
+
+	gl.clearDepth(1.0);
 	gl.clearColor(0.7, 0.7, 0.7, 1.0);
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	
-	/**** Render scene ****/
-	renderScene(gl, context, delta);
 
-	/**** Resolve MSAA framebuffer ****/
-	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	drawScene(gl, context);
 
-	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-	
-	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, renderTargetFBO);
+	/////////////////////////////////////////////////
+	// Render transparent objects
+	/////////////////////////////////////////////////
+	gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
+
+	gl.viewport(0, 0, viewWidth, viewHeight);
+
+	gl.clearDepth(0.0);
+
+	//The color buffer needs to be cleared with an alhpa of ONE in order for
+	//the alpha blending to work properly
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	gl.clearDepth(1.0);
+
+	//This are the parameters for "under" blending.
+	gl.blendEquation(gl.FUNC_ADD);
+	gl.blendFuncSeparate(gl.DST_ALPHA, gl.ONE, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
+
+	/* Draw depth layers */
+	gl.useProgram(shapeShader["program"]);
+	gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
+	gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
+	gl.uniform1f(shapeShader["uniforms"]["u_DepthCompareBias"], context["depthPeeling"]["depthCompareBias"]);
+
+	//Bind the 'closest depth' texture
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, context["transparent"]["depthTexture"]);
+	gl.uniform1i(shapeShader["uniforms"]["u_ClosestDepth"], 1);
+
+	for (let i = 0; i < layerCount; i++) {
+		gl.useProgram(shapeShader["program"]);
+		gl.uniform1i(shapeShader["uniforms"]["u_TreatAsOpaque"], i == (layerCount - 1));
+
+		//Copy the depth from the opaque layer to the "peel" FBO. This is done so that
+		//transparent objects that are further than opaque ones don't get rendered
+		blitFBO(gl, opaqueFBO, peelFBO, viewWidth, viewHeight, gl.DEPTH_BUFFER_BIT);
+		
+		/* Draw transparent objects */
+		gl.bindFramebuffer(gl.FRAMEBUFFER, peelFBO);
+
+		gl.clearColor(0.0, 0.0, 0.0, 0.0);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+		drawShapes(gl, context, shapeShader);
+
+		//Copy the depth from the "peel" FBO to the "transparent" FBO.
+		blitFBO(gl, peelFBO, transparentFBO, viewWidth, viewHeight, gl.DEPTH_BUFFER_BIT);
+
+		/* Composite current layer under the rest */
+		gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
+
+		composeTransparentPass(gl, context, "peel");
+
+		//We don't HAVE to unbind the texture, but the WebGL debug layers get confused and think we are 
+		//reading from the texture while also drawing to it and print a warning message.
+		gl.bindTexture(gl.TEXTURE_2D, null);
+	}
+
+	/* Composite the opaque layer under the transparent layer */
+	gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
+
+	composeTransparentPass(gl, context, "opaque");
+
+	/////////////////////////////////////////////////
+	// Copy the final result to the screen
+	/////////////////////////////////////////////////
+	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, transparentFBO);
 	gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-
-	gl.blitFramebuffer(0, 0, gl.canvas.width, gl.canvas.height,
-					   0, 0, gl.canvas.width, gl.canvas.height,
+	
+	gl.blitFramebuffer(0, 0, viewWidth, viewHeight,
+					   0, 0, viewWidth, viewHeight,
 					   gl.COLOR_BUFFER_BIT, gl.NEAREST);
 }

@@ -1,5 +1,3 @@
-#version 300 es
-
 #pragma vscode_glsllint_stage : vert
 
 layout(location = 0) in vec3 a_Position;

@@ -47,7 +47,7 @@ class CellModeller4Backend(SimulationBackend):
 			shapes_list = []
 
 			for sphere in renderer.spheres:
-				shapes_list.append({ "type": "sphere", "pos":  sphere.position, "radius": sphere.radius })
+				shapes_list.append({ "type": "sphere", "pos":  sphere.position, "radius": sphere.radius, "color": sphere.color })
 
 			return shapes_list
 
