@@ -21,9 +21,12 @@ function createShader(gl, vsSource, fsSource, uniforms, defines=[]) {
 	gl.compileShader(fragmentShader);
 	
 	if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-		console.log(vsFinalSource);
+		const errorMessage = "Vertex shader error: " + gl.getShaderInfoLog(vertexShader);
 
-		alert("Vertex shader error: " + gl.getShaderInfoLog(vertexShader));
+		console.log(vsFinalSource);
+		console.log(errorMessage);
+
+		alert(errorMessage);
 
 		gl.deleteShader(vertexShader);
 		
@@ -31,9 +34,12 @@ function createShader(gl, vsSource, fsSource, uniforms, defines=[]) {
 	}
 	
 	if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-		console.log(fsFinalSource);
+		const errorMessage = "Fragment shader error: " + gl.getShaderInfoLog(fragmentShader);
 
-		alert("Fragment shader error: " + gl.getShaderInfoLog(fragmentShader));
+		console.log(fsFinalSource);
+		console.log(errorMessage);
+
+		alert(errorMessage);
 
 		gl.deleteShader(vertexShader);
 		gl.deleteShader(fragmentShader);
@@ -331,6 +337,29 @@ async function fetchOrThrow(resource, options=null) {
 	else return response
 }
 
+function createColorVolume(gl, context) {
+	const cellCount = [ 10, 10, 10 ];
+
+	const texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_3D, texture);
+	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.REPEAT);
+	gl.texImage3D(gl.TEXTURE_3D, 1, gl.RGBA8, cellCount[0], cellCount[1], cellCount[2], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+	gl.bindTexture(gl.TEXTURE_3D, null);
+
+	context["colorVolume"] = {
+		"enabled": true,
+		"texture": texture,
+
+		"origin": vec3.fromValues(-30, -30, -30),
+		"cellCount": vec3.fromValues(cellCount[0], cellCount[1], cellCount[2]),
+		"cellSize": vec3.fromValues(6, 6, 6),
+	};
+}
+
 export async function init(gl, context) {
 	//Load cell shader
 	const fetchCellShader = async () => {
@@ -372,8 +401,8 @@ export async function init(gl, context) {
 		]);
 	};
 
-	//Load debug shader
-	const fetchDebugShader = async () => {
+	//Load compose shader
+	const fetchComposeShader = async () => {
 		const composeVertexData = await fetchOrThrow("/static/shaders/dp_composite_shader.vert");
 		const composeVertexSource = await composeVertexData.text();
 	
@@ -381,8 +410,15 @@ export async function init(gl, context) {
 		const composeFragmentSource = await composeFragmentData.text();
 	
 		context["composeShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
-			"u_ProjectionMatrix", "u_ViewMatrix", "u_ColorTexture"
+			"u_Texture"
 		]);
+
+		context["composeVolumetricShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
+			"u_ProjectionMatrix", "u_ViewMatrix", 
+			"u_ColorTexture", "u_FurtherDepth", "u_CloserDepth", "u_DepthCompareBias",
+			"u_VolumeOrigin", "u_VolumeCellSize", "u_VolumeCellCount",
+			"u_ScreenSize"
+		], [ "COMPOSE_WITH_VOLUMETRICS" ]);
 	};
 
 	//Load the bacterium
@@ -415,6 +451,9 @@ export async function init(gl, context) {
 	//Generate grid
 	generateGrid(gl, context);
 
+	//Create color volume
+	createColorVolume(gl, context);
+
 	context["cellCount"] = 0;
 	context["cellData"] = null;
 
@@ -422,7 +461,7 @@ export async function init(gl, context) {
 		fetchCellShader(),
 		fetchGridShader(),
 		fetchShapeShader(),
-		fetchDebugShader(),
+		fetchComposeShader(),
 		fetchBacteriumModel(),
 		fetchSphereModel(),
 		fetchPlaneModel(),
@@ -477,7 +516,8 @@ function recreateOpaqueFBO(gl, context) {
 function recreateTransparentFBO(gl, context) {
 	if (context["transparent"] != null) {
 		gl.deleteTexture(context["transparent"]["colorTexture"]);
-		gl.deleteTexture(context["transparent"]["depthTexture"]);
+		gl.deleteTexture(context["transparent"]["depthTexture0"]);
+		gl.deleteTexture(context["transparent"]["depthTexture1"]);
 		gl.deleteFramebuffer(context["transparent"]["fbo"]);
 	}
 
@@ -485,13 +525,14 @@ function recreateTransparentFBO(gl, context) {
 	const height = gl.canvas.height;
 
 	const colorTexture = createTextureAttachment(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
-	const depthTexture = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
+	const depthTexture0 = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
+	const depthTexture1 = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
 
 	const framebuffer = gl.createFramebuffer();
 
 	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture0, 0);
 	
 	gl.drawBuffers([ gl.COLOR_ATTACHMENT0 ]);
 	
@@ -499,7 +540,8 @@ function recreateTransparentFBO(gl, context) {
 	
 	context["transparent"] = {
 		"colorTexture": colorTexture,
-		"depthTexture": depthTexture,
+		"depthTexture0": depthTexture0,
+		"depthTexture1": depthTexture1,
 		"fbo": framebuffer
 	};
 }
@@ -619,29 +661,13 @@ function drawShapes(gl, context, shader) {
 	}
 }
 
-function blitFBO(gl, read, draw, width, height, clearFlags) {
-	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
-	gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
-
-	gl.blitFramebuffer(0, 0, width, height,
-					   0, 0, width, height,
-					   clearFlags, gl.NEAREST);
-}
-
-function composeTransparentPass(gl, context, name, ignoreDepth=true, blending=true) {
-	const composeShader = context["composeShader"];
+function drawFullscreenQuad(gl, context, ignoreDepth=true, blending=true) {
 	const planeMesh = context["planeMesh"];
 
 	if (blending) gl.enable(gl.BLEND);
 	if (ignoreDepth) gl.disable(gl.DEPTH_TEST);
 
 	gl.disable(gl.CULL_FACE);
-
-	gl.useProgram(composeShader["program"]);
-
-	gl.activeTexture(gl.TEXTURE0);
-	gl.bindTexture(gl.TEXTURE_2D, context[name]["colorTexture"]);
-	gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
 
 	gl.bindVertexArray(planeMesh.vao);
 	gl.drawElements(gl.TRIANGLES, planeMesh.indexCount, planeMesh.indexType, 0);
@@ -653,6 +679,15 @@ function composeTransparentPass(gl, context, name, ignoreDepth=true, blending=tr
 	if (blending) gl.disable(gl.BLEND);
 }
 
+function blitFBO(gl, read, draw, width, height, clearFlags) {
+	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
+	gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
+
+	gl.blitFramebuffer(0, 0, width, height,
+					   0, 0, width, height,
+					   clearFlags, gl.NEAREST);
+}
+
 export function drawFrame(gl, context, delta) {
 	const viewWidth = gl.canvas.width;
 	const viewHeight = gl.canvas.height;
@@ -662,8 +697,10 @@ export function drawFrame(gl, context, delta) {
 	const peelFBO = context["peel"]["fbo"];
 	
 	const shapeShader = context["shapeShader"];
+	const composeShader = context["composeShader"];
+	const composeVolumeShader = context["composeVolumetricShader"];
 	
-	const layerCount = context["depthPeeling"]["layerCount"];
+	const layerCount = 2;//Math.max(1, context["depthPeeling"]["layerCount"]);
 	
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
@@ -694,16 +731,24 @@ export function drawFrame(gl, context, delta) {
 
 	gl.viewport(0, 0, viewWidth, viewHeight);
 
-	gl.clearDepth(0.0);
-
 	//The color buffer needs to be cleared with an alhpa of ONE in order for
 	//the alpha blending to work properly
 	gl.clearColor(0.0, 0.0, 0.0, 1.0);
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	gl.clearDepth(0.0);
+
+	gl.clear(gl.COLOR_BUFFER_BIT);
+
+	//Clear depth texture 0
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, context["transparent"]["depthTexture0"], 0);
+	gl.clear(gl.DEPTH_BUFFER_BIT);
+
+	//Clear depth texture 1
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, context["transparent"]["depthTexture1"], 0);
+	gl.clear(gl.DEPTH_BUFFER_BIT);
 
 	gl.clearDepth(1.0);
 
-	//This are the parameters for "under" blending.
+	//These are the parameters for "under" blending (requires pre-multiplied alpha).
 	gl.blendEquation(gl.FUNC_ADD);
 	gl.blendFuncSeparate(gl.DST_ALPHA, gl.ONE, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
 
@@ -713,14 +758,17 @@ export function drawFrame(gl, context, delta) {
 	gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
 	gl.uniform1f(shapeShader["uniforms"]["u_DepthCompareBias"], context["depthPeeling"]["depthCompareBias"]);
 
-	//Bind the 'closest depth' texture
-	gl.activeTexture(gl.TEXTURE1);
-	gl.bindTexture(gl.TEXTURE_2D, context["transparent"]["depthTexture"]);
-	gl.uniform1i(shapeShader["uniforms"]["u_ClosestDepth"], 1);
-
 	for (let i = 0; i < layerCount; i++) {
+		const currentTransparentDepth = (i & 1) ? context["transparent"]["depthTexture1"] : context["transparent"]["depthTexture0"];
+		const previousTransparentDepth = (i & 1) ? context["transparent"]["depthTexture0"] : context["transparent"]["depthTexture1"];
+
 		gl.useProgram(shapeShader["program"]);
 		gl.uniform1i(shapeShader["uniforms"]["u_TreatAsOpaque"], i == (layerCount - 1));
+
+		//Bind the 'closest depth' texture
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, previousTransparentDepth);
+		gl.uniform1i(shapeShader["uniforms"]["u_ClosestDepth"], 1);
 
 		//Copy the depth from the opaque layer to the "peel" FBO. This is done so that
 		//transparent objects that are further than opaque ones don't get rendered
@@ -734,23 +782,66 @@ export function drawFrame(gl, context, delta) {
 
 		drawShapes(gl, context, shapeShader);
 
-		//Copy the depth from the "peel" FBO to the "transparent" FBO.
-		blitFBO(gl, peelFBO, transparentFBO, viewWidth, viewHeight, gl.DEPTH_BUFFER_BIT);
-
 		/* Composite current layer under the rest */
 		gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, currentTransparentDepth, 0);
 
-		composeTransparentPass(gl, context, "peel");
+		if (context["colorVolume"]["enabled"]) {
+			const shaderUniforms = composeVolumeShader["uniforms"];
+
+			const volOrigin = context["colorVolume"]["origin"];
+			const volCellCount = context["colorVolume"]["cellCount"];
+			const volCellSize = context["colorVolume"]["cellSize"];
+
+			gl.useProgram(composeVolumeShader["program"]);
+
+			gl.uniformMatrix4fv(shaderUniforms["u_ProjectionMatrix"], false, projMatrix);
+			gl.uniformMatrix4fv(shaderUniforms["u_ViewMatrix"], false, viewMatrix);
+			gl.uniform2i(shaderUniforms["u_ScreenSize"], viewWidth, viewHeight);
+			gl.uniform1f(shaderUniforms["u_DepthCompareBias"], context["depthPeeling"]["depthCompareBias"]);
+
+			gl.uniform3f(shaderUniforms["u_VolumeOrigin"], volOrigin[0], volOrigin[1], volOrigin[2]);
+			gl.uniform3f(shaderUniforms["u_VolumeCellSize"], volCellSize[0], volCellSize[1], volCellSize[2]);
+			gl.uniform3f(shaderUniforms["u_VolumeCellCount"], volCellCount[0], volCellCount[1], volCellCount[2]);
+
+			gl.activeTexture(gl.TEXTURE0);
+			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);
+			gl.uniform1i(shaderUniforms["u_ColorTexture"], 0);
+
+			gl.activeTexture(gl.TEXTURE1);
+			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["depthTexture"]);
+			gl.uniform1i(shaderUniforms["u_FurtherDepth"], 1);
+
+			gl.activeTexture(gl.TEXTURE2);
+			gl.bindTexture(gl.TEXTURE_2D, previousTransparentDepth);
+			gl.uniform1i(shaderUniforms["u_CloserDepth"], 2);
+		} else {
+			gl.useProgram(composeShader["program"]);
+			gl.activeTexture(gl.TEXTURE0);
+			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);
+			gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
+		}
+
+		drawFullscreenQuad(gl, context);
+
+		//Copy the depth from the "peel" FBO to the "transparent" FBO.
+		blitFBO(gl, peelFBO, transparentFBO, viewWidth, viewHeight, gl.DEPTH_BUFFER_BIT);
 
 		//We don't HAVE to unbind the texture, but the WebGL debug layers get confused and think we are 
 		//reading from the texture while also drawing to it and print a warning message.
 		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	}
 
 	/* Composite the opaque layer under the transparent layer */
 	gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
 
-	composeTransparentPass(gl, context, "opaque");
+	gl.useProgram(composeShader["program"]);
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, context["opaque"]["colorTexture"]);
+	gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
+
+	drawFullscreenQuad(gl, context, "opaque");
 
 	/////////////////////////////////////////////////
 	// Copy the final result to the screen

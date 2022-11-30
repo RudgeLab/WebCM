@@ -7,7 +7,7 @@ uniform vec4 u_Color;
 uniform int u_TreatAsOpaque;
 uniform float u_DepthCompareBias;
 
-out vec4 outColor;
+out vec4 out_Color;
 
 void main() {
 	float fragDepth = gl_FragCoord.z;
@@ -19,5 +19,5 @@ void main() {
 		discard;
 	}
 
-	outColor = (u_TreatAsOpaque == 0) ? u_Color : vec4(u_Color.rgb, 1.0);
+	out_Color = (u_TreatAsOpaque == 0) ? u_Color : vec4(u_Color.rgb, 1.0);
 }
