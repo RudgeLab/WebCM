@@ -502,12 +502,6 @@ function processKeyButton(event, context, isdown) {
 	var input = context["input"];
 
 	switch (event.code) {
-	case "KeyQ":
-		input["isQPressed"] = isdown;
-		break;
-	case "KeyE":
-		input["isEPressed"] = isdown;
-		break;
 	case "ShiftLeft":
 	case "ShiftRight":
 		input["shiftPressed"] = isdown;
