@@ -212,7 +212,6 @@ function customFormat(value) {
 		return String(Math.floor(value * magnitude) / magnitude);
 	} else if (Array.isArray(value)) {
 		let content = "";
-		console.log(value);
 
 		for (let i = 0; i < value.length; i++) {
 			content += customFormat(value[i]);
