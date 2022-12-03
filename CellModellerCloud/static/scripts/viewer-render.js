@@ -316,6 +316,39 @@ export function pushFrameData(gl, context, dataBuffer) {
 	gl.bufferData(gl.ARRAY_BUFFER, dataView, gl.DYNAMIC_DRAW, 4, dataBuffer.byteLength - 4);
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
+	const baseSignalsOffset = calcCellIdOffset(context, cellCount);
+	const hasSignals = dataView.getInt8(baseSignalsOffset);
+
+	if (hasSignals != 0) {
+		const boundsOffset = baseSignalsOffset + 1;
+
+		const gridOrigin = vec3.fromValues(
+			dataView.getFloat32(boundsOffset + 0, true),
+			dataView.getFloat32(boundsOffset + 4, true),
+			dataView.getFloat32(boundsOffset + 8, true)
+		);
+
+		const gridCellSize = vec3.fromValues(
+			dataView.getFloat32(boundsOffset + 12, true),
+			dataView.getFloat32(boundsOffset + 16, true),
+			dataView.getFloat32(boundsOffset + 20, true)
+		);
+
+		const gridCellCount = vec3.fromValues(
+			dataView.getInt32(boundsOffset + 24, true),
+			dataView.getInt32(boundsOffset + 28, true),
+			dataView.getInt32(boundsOffset + 32, true)
+		);
+
+		const correctOrigin = vec3.scaleAndAdd(vec3.create(), gridOrigin, gridCellSize, -0.5);
+
+		const colorVolumeOffset = boundsOffset + 36;
+		const colorVolumeSize = 4 * (gridCellCount[0] * gridCellCount[1] * gridCellCount[2]);
+		const colorVolumeView = new Uint8Array(dataBuffer, colorVolumeOffset, colorVolumeSize);
+
+		createColorVolume(gl, context, correctOrigin, gridCellCount, gridCellSize, colorVolumeView);
+	}
+
 	return [ cellCount ];
 }
 
@@ -323,8 +356,12 @@ export function calcCellVertexOffset(context, index) {
 	return 4 + 36 * index;
 }
 
+export function calcCellIdOffset(context, index) {
+	return calcCellVertexOffset(context, context["cellCount"]) + 8 * index;
+}
+
 export function lookupCellIdentifier(context, index) {
-	const baseOffset = 4 + 36 * context["cellCount"] + 8 * index;
+	const baseOffset = calcCellIdOffset(context, index);
 	const dataView = new DataView(context["cellData"]);
 
 	return dataView.getBigUint64(baseOffset, true);
@@ -337,27 +374,35 @@ async function fetchOrThrow(resource, options=null) {
 	else return response
 }
 
-function createColorVolume(gl, context) {
-	const cellCount = [ 10, 10, 10 ];
+function createColorVolume(gl, context, origin, cellCount, cellSize, volumeData) {
+	if (context["colorVolume"] != null) {
+		gl.deleteTexture(context["colorVolume"]["texture"]);
+	}
 
-	const texture = gl.createTexture();
-	gl.bindTexture(gl.TEXTURE_3D, texture);
-	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-	gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.REPEAT);
-	gl.texImage3D(gl.TEXTURE_3D, 1, gl.RGBA8, cellCount[0], cellCount[1], cellCount[2], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-	gl.bindTexture(gl.TEXTURE_3D, null);
+	if (volumeData != null) {
+		const texture = gl.createTexture();
+		gl.bindTexture(gl.TEXTURE_3D, texture);
+		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+		gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGBA8, cellCount[0], cellCount[1], cellCount[2], 0, gl.RGBA, gl.UNSIGNED_BYTE, volumeData);
+		gl.bindTexture(gl.TEXTURE_3D, null);
+	
+		context["colorVolume"] = {
+			"enabled": true,
+			"texture": texture,
+	
+			"origin": vec3.fromValues(origin[0], origin[1], origin[2]),
+			"cellCount": vec3.fromValues(cellCount[0], cellCount[1], cellCount[2]),
+			"cellSize": vec3.fromValues(cellSize[0], cellSize[1], cellSize[2]),
+		};
+	} else {
+		if (context["colorVolume"] == null) context["colorVolume"] = {};
 
-	context["colorVolume"] = {
-		"enabled": true,
-		"texture": texture,
-
-		"origin": vec3.fromValues(-30, -30, -30),
-		"cellCount": vec3.fromValues(cellCount[0], cellCount[1], cellCount[2]),
-		"cellSize": vec3.fromValues(6, 6, 6),
-	};
+		context["colorVolume"]["enabled"] = false;
+	}
 }
 
 export async function init(gl, context) {
@@ -370,7 +415,7 @@ export async function init(gl, context) {
 		const cellFragmentSource = await cellFragmentData.text();
 	
 		context["cellShader"] = createShader(gl, cellVertexSource, cellFragmentSource, [
-			"u_ProjectionMatrix", "u_ViewMatrix", "u_CameraPos", "u_SelectedIndex", "u_ThinOutlines"
+			"u_ProjectionMatrix", "u_ViewMatrix", "u_SelectedIndex", "u_ThinOutlines"
 		]);
 	};
 
@@ -416,7 +461,7 @@ export async function init(gl, context) {
 		context["composeVolumetricShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
 			"u_ProjectionMatrix", "u_ViewMatrix", 
 			"u_ColorTexture", "u_FurtherDepth", "u_CloserDepth", "u_DepthCompareBias",
-			"u_VolumeOrigin", "u_VolumeCellSize", "u_VolumeCellCount",
+			"u_VolumeOrigin", "u_VolumeCellSize", "u_VolumeCellCount", "u_VolumeTexture",
 			"u_ScreenSize"
 		], [ "COMPOSE_WITH_VOLUMETRICS" ]);
 	};
@@ -452,7 +497,7 @@ export async function init(gl, context) {
 	generateGrid(gl, context);
 
 	//Create color volume
-	createColorVolume(gl, context);
+	createColorVolume(gl, context, [ -30, -30, -30 ], [ 10, 10, 10 ], [ 6, 6, 6 ], null);
 
 	context["cellCount"] = 0;
 	context["cellData"] = null;
@@ -586,8 +631,7 @@ function drawScene(gl, context) {
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
 	const viewMatrix = camera["viewMatrix"];
-
-	const cameraPos = context["camera"]["position"];
+	const cameraPos = camera["position"];
 
 	//Draw grid
 	const gridShader = context["gridShader"];
@@ -615,7 +659,6 @@ function drawScene(gl, context) {
 	gl.useProgram(cellShader["program"]);
 	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
 	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
-	gl.uniform3f(cellShader["uniforms"]["u_CameraPos"], cameraPos[0], cameraPos[1], cameraPos[2]);
 	
 	gl.uniform1i(cellShader["uniforms"]["u_SelectedIndex"], context["selectedCellIndex"]);
 	gl.uniform1i(cellShader["uniforms"]["u_ThinOutlines"], withThinOutline);
@@ -700,7 +743,7 @@ export function drawFrame(gl, context, delta) {
 	const composeShader = context["composeShader"];
 	const composeVolumeShader = context["composeVolumetricShader"];
 	
-	const layerCount = 2;//Math.max(1, context["depthPeeling"]["layerCount"]);
+	const layerCount = Math.max(1, context["depthPeeling"]["layerCount"]);
 	
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
@@ -792,6 +835,7 @@ export function drawFrame(gl, context, delta) {
 			const volOrigin = context["colorVolume"]["origin"];
 			const volCellCount = context["colorVolume"]["cellCount"];
 			const volCellSize = context["colorVolume"]["cellSize"];
+			const volTexture = context["colorVolume"]["texture"];
 
 			gl.useProgram(composeVolumeShader["program"]);
 
@@ -802,7 +846,7 @@ export function drawFrame(gl, context, delta) {
 
 			gl.uniform3f(shaderUniforms["u_VolumeOrigin"], volOrigin[0], volOrigin[1], volOrigin[2]);
 			gl.uniform3f(shaderUniforms["u_VolumeCellSize"], volCellSize[0], volCellSize[1], volCellSize[2]);
-			gl.uniform3f(shaderUniforms["u_VolumeCellCount"], volCellCount[0], volCellCount[1], volCellCount[2]);
+			gl.uniform3i(shaderUniforms["u_VolumeCellCount"], volCellCount[0], volCellCount[1], volCellCount[2]);
 
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);
@@ -815,6 +859,10 @@ export function drawFrame(gl, context, delta) {
 			gl.activeTexture(gl.TEXTURE2);
 			gl.bindTexture(gl.TEXTURE_2D, previousTransparentDepth);
 			gl.uniform1i(shaderUniforms["u_CloserDepth"], 2);
+			
+			gl.activeTexture(gl.TEXTURE3);
+			gl.bindTexture(gl.TEXTURE_3D, volTexture);
+			gl.uniform1i(shaderUniforms["u_VolumeTexture"], 3);
 		} else {
 			gl.useProgram(composeShader["program"]);
 			gl.activeTexture(gl.TEXTURE0);

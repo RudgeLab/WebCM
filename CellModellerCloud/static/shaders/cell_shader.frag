@@ -1,8 +1,6 @@
 #pragma vscode_glsllint_stage : frag
 precision highp float;
 
-uniform vec3 u_CameraPos;
-
 uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
 
@@ -102,7 +100,9 @@ float lineSegmentDistance(vec3 a0, vec3 a1, vec3 b0, vec3 b1) {
 	https://bgolus.medium.com/rendering-a-sphere-on-a-quad-13c92025570c
 */
 void main() {
-	float dist = lineSegmentDistance(u_CameraPos, v_WorldPos, v_CellEnd0, v_CellEnd1);
+	vec3 cameraPos = vec3(inverse(u_ViewMatrix) * vec4(0, 0, 0, 1)).xyz;
+
+	float dist = lineSegmentDistance(cameraPos, v_WorldPos, v_CellEnd0, v_CellEnd1);
 
 	bool selected = v_IsSelected != 0;
 	float outlineThickness = selected ? 0.13 : (v_ThinOutline == 0 ? 0.08 : 0.0);
@@ -117,9 +117,9 @@ void main() {
 	}
 
 	//There's probably a much more efficient way of doing this
-	vec3 rayDir = normalize(v_WorldPos - u_CameraPos);
-	float rayDepth = capIntersect(u_CameraPos, rayDir, v_CellEnd0, v_CellEnd1, v_Radius);
-	vec3 intersectionPos = u_CameraPos + rayDir * rayDepth;
+	vec3 rayDir = normalize(v_WorldPos - cameraPos);
+	float rayDepth = capIntersect(cameraPos, rayDir, v_CellEnd0, v_CellEnd1, v_Radius);
+	vec3 intersectionPos = cameraPos + rayDir * rayDepth;
 
 	vec4 clipPos = u_ProjectionMatrix * u_ViewMatrix * vec4(intersectionPos, 1.0);
 	float clipDepth = clipPos.z / clipPos.w;

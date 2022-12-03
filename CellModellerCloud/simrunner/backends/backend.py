@@ -27,6 +27,9 @@ class SimulationBackend:
 	def get_shape_list(self):
 		return []
 
+	def get_signals_grid(self):
+		return None
+
 	def write_step_pickle(self):
 		return ""
 

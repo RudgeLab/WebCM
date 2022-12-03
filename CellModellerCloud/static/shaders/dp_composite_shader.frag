@@ -1,5 +1,6 @@
 #pragma vscode_glsllint_stage : frag
 precision highp float;
+precision mediump sampler3D;
 
 #ifdef COMPOSE_WITH_VOLUMETRICS
 uniform mat4 u_ViewMatrix;
@@ -12,7 +13,8 @@ uniform float u_DepthCompareBias;
 
 uniform vec3 u_VolumeOrigin;
 uniform vec3 u_VolumeCellSize;
-uniform vec3 u_VolumeCellCount;
+uniform ivec3 u_VolumeCellCount;
+uniform sampler3D u_VolumeTexture;
 
 uniform ivec2 u_ScreenSize;
 #else
@@ -41,47 +43,9 @@ vec4 blendOver(vec4 over, vec4 under) {
 }
 
 vec4 traceVolume(vec3 rayOrigin, vec3 rayDir, float tMin, float tMax) {
-	vec3 invCellSize = 1.0 / u_VolumeCellSize;
-	vec3 invCellCount = 1.0 / u_VolumeCellCount;
-	vec3 invRayDir = 1.0 / rayDir;
+	float absorbedDensity = (tMax - tMin) * 0.04;
 
-	const float rayTBias = 0.0001;
-
-	vec4 accumulatedColor = vec4(0, 0, 0, 0);
-
-	int safety = 0;
-
-	for (float curTMin = tMin + rayTBias; curTMin < tMax;) {
-		vec3 cellRayStart = rayOrigin + rayDir * curTMin;
-		vec3 cellLocation = (cellRayStart - u_VolumeOrigin) * invCellSize;
-
-		vec3 cellIndex = floor(cellLocation);
-		vec3 cellOffset = fract(cellLocation);
-
-		vec3 cellMin = cellIndex * u_VolumeCellSize + u_VolumeOrigin;
-		vec3 cellMax = cellMin + u_VolumeCellSize;
-
-#if 0
-		vec2 cellT = intersectAABB(rayOrigin, invRayDir, cellMin, cellMax);
-
-		//This isn't needed, but I'll keep it here as a kind of "visual" assert
-		if (cellT.x >= cellT.y) return vec4(1, 0, 1, 1);
-		
-		vec4 cellColor = vec4(cellIndex * invCellCount, 0.2);
-		accumulatedColor = blendUnder(accumulatedColor, cellColor);
-
-		curTMin = cellT.y + rayTBias;
-#else
-		vec4 cellColor = vec4(cellIndex * invCellCount, 0.01);
-		accumulatedColor = blendOver(accumulatedColor, cellColor);
-
-		curTMin += 0.1;
-#endif
-
-		if (++safety >= 1000) return vec4(1, 1, 0, 1);
-	}
-
-	return accumulatedColor;
+	return vec4(vec3(0.1, 0.6, 0.2), 1.0 - exp(-absorbedDensity));
 }
 
 void main() {
@@ -108,7 +72,7 @@ void main() {
 		vec3 rayOrigin = rayStart.xyz;
 		vec3 rayDir = (rayEnd.xyz - rayStart.xyz) / rayLength;
 
-		vec2 volumeTRange = intersectAABB(rayOrigin, 1.0 / rayDir, u_VolumeOrigin, u_VolumeOrigin + u_VolumeCellSize * u_VolumeCellCount);
+		vec2 volumeTRange = intersectAABB(rayOrigin, 1.0 / rayDir, u_VolumeOrigin, u_VolumeOrigin + u_VolumeCellSize * vec3(u_VolumeCellCount));
 
 		float rayStartT = max(volumeTRange.x, 0.0);
 		float rayEndT = min(volumeTRange.y, rayLength);

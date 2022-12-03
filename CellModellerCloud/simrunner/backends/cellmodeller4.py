@@ -8,6 +8,13 @@ import struct
 
 import importlib
 
+def pack_norm_color(red, green, blue, alpha=1.0):
+	color_r = int(255.0 * min(red, 1.0))
+	color_g = int(255.0 * min(green, 1.0))
+	color_b = int(255.0 * min(blue, 1.0))
+	color_a = int(255.0 * min(alpha, 1.0))
+	return (color_a << 24) | (color_b << 16) | (color_g << 8) | color_r
+
 class CellModeller4Backend(SimulationBackend):
 	def __init__(self, params):
 		super().__init__(params)
@@ -21,7 +28,7 @@ class CellModeller4Backend(SimulationBackend):
 		# We cannot import CellModeller the traditional way because we want the users to be able to run
 		# the server even if they don't have all the versions of CellModeller installed.
 		self.sim_module = importlib.import_module("CellModeller.Simulator")
-		self.render_module = importlib.import_module("CellModeller.GUI.Renderers")
+		self.render_module = importlib.import_module("CellModeller.GUI.WebRenderer")
 
 		# Setup simulator properties
 		self.simulation = self.sim_module.Simulator(self.params.name, self.params.delta_time, moduleStr=self.params.source, clPlatformNum=0, clDeviceNum=0, is_gui=False, saveOutput=False)
@@ -35,23 +42,32 @@ class CellModeller4Backend(SimulationBackend):
 	def step(self):
 		self.simulation.step()
 	
-	def get_shape_list(self):
+	def _find_web_renderer(self):
 		# Deal with older versions of CellModeller that don't have WebRenderer
 		if not "WebRenderer" in vars(self.render_module):
-			return []
+			return None
 
 		for renderer in self.simulation.renderers:
-			if not type(renderer) is self.render_module.WebRenderer:
-				continue
-			
-			shapes_list = []
+			if type(renderer) is self.render_module.WebRenderer:
+				return renderer
 
-			for sphere in renderer.spheres:
-				shapes_list.append({ "type": "sphere", "pos":  sphere.position, "radius": sphere.radius, "color": sphere.color })
+		return None
 
-			return shapes_list
+	def get_shape_list(self):
+		renderer = self._find_web_renderer()
+		if not renderer: return []
 
-		return []
+		shapes_list = []
+
+		for sphere in renderer.spheres:
+			shapes_list.append({ "type": "sphere", "pos":  sphere.position, "radius": sphere.radius, "color": sphere.color })
+
+		return shapes_list
+
+	def get_signals_grid(self):
+		renderer = self._find_web_renderer()
+
+		return None if not renderer else renderer.getSignalsGrid()
 
 	def _write_step_frame(self, path):
 		ATTRIBUTES_TO_PACK = [
@@ -78,15 +94,14 @@ class CellModeller4Backend(SimulationBackend):
 		cell_states = self.simulation.cellStates
 
 		byte_buffer = io.BytesIO()
+
+		# Write cell data
 		byte_buffer.write(struct.pack("<i", len(cell_states)))
 
 		for it in cell_states.keys():
 			state = cell_states[it]
 
-			color_r = int(255.0 * min(state.color[0], 1.0))
-			color_g = int(255.0 * min(state.color[1], 1.0))
-			color_b = int(255.0 * min(state.color[2], 1.0))
-			packed_color = 0x00000000 | (color_b << 16) | (color_g << 8) | color_r
+			packed_color = pack_norm_color(state.color[0], state.color[1], state.color[2], 1.0)
 
 			# The length is computed differenty in CellModeller4 and CellModeller5. The front-end 
 			# expects that the length will be calculated based on how its done in CM5.
@@ -94,12 +109,35 @@ class CellModeller4Backend(SimulationBackend):
 
 			byte_buffer.write(struct.pack("<fff", state.pos[0], -state.pos[2], state.pos[1]))
 			byte_buffer.write(struct.pack("<fff", state.dir[0],  state.dir[2], state.dir[1]))
-			byte_buffer.write(struct.pack("<ffi", final_length,  state.radius, packed_color))
+			byte_buffer.write(struct.pack("<ffI", final_length,  state.radius, packed_color))
 
+		# Write cell IDs
 		for it in cell_states.keys():
 			state = cell_states[it]
 
 			byte_buffer.write(struct.pack("<Q", int(state.id)))
+
+		# Write signals 
+		signals = self.get_signals_grid()
+
+		if signals:
+			byte_buffer.write(struct.pack("<?", True))
+
+			byte_buffer.write(struct.pack("<fff", signals.origin[0], signals.origin[2], signals.origin[1]))
+			byte_buffer.write(struct.pack("<fff", signals.cell_size[0], signals.cell_size[2], signals.cell_size[1]))
+			byte_buffer.write(struct.pack("<iii", signals.cell_count[0], signals.cell_count[2], signals.cell_count[1]))
+
+			for z in range(signals.cell_count[1]):
+				for y in range(signals.cell_count[2]):
+					for x in range(signals.cell_count[0]):
+						density = signals.voxels[x][z][y]
+						color = [ density, 0.0, 0.0, density ]
+
+						#color = [ x / signals.cell_count[0], y / signals.cell_count[2], z / signals.cell_count[1], 0.5 ]
+						
+						byte_buffer.write(struct.pack("<I", pack_norm_color(color[0], color[1], color[2], color[3])))
+		else:
+			byte_buffer.write(struct.pack("<?", False))
 
 		with open(path, "wb") as out_file:
 			out_file.write(self.compress_step(byte_buffer.getbuffer()))
