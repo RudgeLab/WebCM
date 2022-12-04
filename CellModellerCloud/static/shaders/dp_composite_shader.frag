@@ -16,6 +16,8 @@ uniform vec3 u_VolumeCellSize;
 uniform ivec3 u_VolumeCellCount;
 uniform sampler3D u_VolumeTexture;
 
+uniform float u_VolumeOpacityMultiplier;
+
 uniform ivec2 u_ScreenSize;
 #else
 uniform sampler2D u_Texture;
@@ -42,10 +44,80 @@ vec4 blendOver(vec4 over, vec4 under) {
 	return vec4(color, alpha);
 }
 
-vec4 traceVolume(vec3 rayOrigin, vec3 rayDir, float tMin, float tMax) {
-	float absorbedDensity = (tMax - tMin) * 0.04;
+vec3 divideSafe(vec3 num, vec3 denum) {
+	const float INFINITY = intBitsToFloat(0x7f800000);
 
-	return vec4(vec3(0.1, 0.6, 0.2), 1.0 - exp(-absorbedDensity));
+	return vec3(
+		denum.x != 0.0 ? (num.x / denum.x) : INFINITY,
+		denum.y != 0.0 ? (num.y / denum.y) : INFINITY,
+		denum.z != 0.0 ? (num.z / denum.z) : INFINITY
+	);
+}
+
+vec4 traceVolume(vec3 rayOrigin, vec3 rayDir, float rayTMin, float rayTMax) {
+	vec3 voxelSize = u_VolumeCellSize;
+	ivec3 voxelCount = u_VolumeCellCount;
+
+	vec3 rayGridEntry = rayOrigin + rayDir * (rayTMin + 0.0001) - u_VolumeOrigin;
+	float localTMax = rayTMax - rayTMin;
+
+	/* Initialize the ray traversal algorithm */
+	ivec3 gridStep = ivec3(1);
+	if (rayDir.x < 0.0) gridStep.x = -1;
+	if (rayDir.y < 0.0) gridStep.y = -1;
+	if (rayDir.z < 0.0) gridStep.z = -1;
+
+	ivec3 curVoxel = ivec3(floor(rayGridEntry / voxelSize));
+	vec3 nextVoxelBoundary = vec3(curVoxel + gridStep) * voxelSize;
+
+	vec3 tMax = divideSafe(nextVoxelBoundary - rayGridEntry, rayDir);
+	vec3 tDelta = divideSafe(voxelSize * vec3(gridStep), rayDir);
+
+	if (rayDir.x < 0.0) tMax.x -= tDelta.x;
+	if (rayDir.y < 0.0) tMax.y -= tDelta.y;
+	if (rayDir.z < 0.0) tMax.z -= tDelta.z;
+
+	/* Traverse the grid and compute the color of the current ray */
+	float lastT = 0.0;
+	vec4 absorbedColor = vec4(0, 0, 0, 1);
+
+	int safety = 0;
+
+	while (true) {
+		float t = min(tMax.x, min(tMax.y, tMax.z));
+
+		/* Core loop body */
+		vec4 voxelColor = texture(u_VolumeTexture, (vec3(curVoxel) + 0.5) / vec3(voxelCount));
+		voxelColor.a *= u_VolumeOpacityMultiplier;
+
+		absorbedColor.xyz += voxelColor.xyz * voxelColor.a * absorbedColor.a;
+		absorbedColor.a *= (1.0 - voxelColor.a);
+
+		if (t >= localTMax) break;
+		if (++safety >= 4000) return vec4(1, 1, 0, 1);
+
+		lastT = t;
+
+		/* Move to next cell */
+		if (tMax.x < tMax.y && tMax.x < tMax.z) {
+			tMax.x += tDelta.x;
+			curVoxel.x += gridStep.x;
+
+			if (curVoxel.x < 0 || curVoxel.x > voxelCount.x) break;
+		} else if (tMax.y < tMax.z) {
+			tMax.y += tDelta.y;
+			curVoxel.y += gridStep.y;
+
+			if (curVoxel.y < 0 || curVoxel.y > voxelCount.y) break;
+		} else {
+			tMax.z += tDelta.z;
+			curVoxel.z += gridStep.z;
+
+			if (curVoxel.z < 0 || curVoxel.z > voxelCount.z) break;
+		}
+	}
+
+	return vec4(absorbedColor.rgb, 1.0 - absorbedColor.a);
 }
 
 void main() {

@@ -133,8 +133,6 @@ class CellModeller4Backend(SimulationBackend):
 						density = signals.voxels[x][z][y]
 						color = [ density, 0.0, 0.0, density ]
 
-						#color = [ x / signals.cell_count[0], y / signals.cell_count[2], z / signals.cell_count[1], 0.5 ]
-						
 						byte_buffer.write(struct.pack("<I", pack_norm_color(color[0], color[1], color[2], color[3])))
 		else:
 			byte_buffer.write(struct.pack("<?", False))

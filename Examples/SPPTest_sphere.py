@@ -59,7 +59,7 @@ def setup(sim):
 
     # Add some objects to draw the models
     therenderer = Renderers.WebRenderer()
-    therenderer.add_sphere([ 0, 0, 0 ], 25.0)
+    therenderer.addSphere([ 0, 0, 0 ], 25.0)
     sim.addRenderer(therenderer)
 
     sim.pickleSteps = 5

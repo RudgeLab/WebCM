@@ -461,7 +461,7 @@ export async function init(gl, context) {
 		context["composeVolumetricShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
 			"u_ProjectionMatrix", "u_ViewMatrix", 
 			"u_ColorTexture", "u_FurtherDepth", "u_CloserDepth", "u_DepthCompareBias",
-			"u_VolumeOrigin", "u_VolumeCellSize", "u_VolumeCellCount", "u_VolumeTexture",
+			"u_VolumeOrigin", "u_VolumeCellSize", "u_VolumeCellCount", "u_VolumeTexture", "u_VolumeOpacityMultiplier",
 			"u_ScreenSize"
 		], [ "COMPOSE_WITH_VOLUMETRICS" ]);
 	};
@@ -847,6 +847,7 @@ export function drawFrame(gl, context, delta) {
 			gl.uniform3f(shaderUniforms["u_VolumeOrigin"], volOrigin[0], volOrigin[1], volOrigin[2]);
 			gl.uniform3f(shaderUniforms["u_VolumeCellSize"], volCellSize[0], volCellSize[1], volCellSize[2]);
 			gl.uniform3i(shaderUniforms["u_VolumeCellCount"], volCellCount[0], volCellCount[1], volCellCount[2]);
+			gl.uniform1f(shaderUniforms["u_VolumeOpacityMultiplier"], 0.18);
 
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);

@@ -7,6 +7,7 @@ import math
 from CellModeller.Signalling.GridDiffusion import GridDiffusion #add
 from CellModeller.Integration.CLCrankNicIntegrator import CLCrankNicIntegrator #add
 
+from CellModeller.GUI.WebRenderer import WebRenderer
 
 max_cells = 2**15
 
@@ -36,13 +37,10 @@ def setup(sim):
     sim.addCell(cellType=0, pos=(-10.0,0,0))  #Add
     sim.addCell(cellType=1, pos=(10.0,0,0)) #Add
 
-    if sim.is_gui:
-        # Add some objects to draw the models
-        from CellModeller.GUI import Renderers
-        therenderer = Renderers.GLBacteriumRenderer(sim)
-        sim.addRenderer(therenderer)
-        sigrend = Renderers.GLGridRenderer(sig, integ) # Add
-        sim.addRenderer(sigrend) #Add
+    renderer = WebRenderer()
+    renderer.attachSignals(sig, integ)
+
+    sim.addRenderer(renderer)
 
     sim.pickleSteps = 10
 
