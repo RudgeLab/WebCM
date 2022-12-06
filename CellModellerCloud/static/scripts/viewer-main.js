@@ -46,7 +46,7 @@ function appendInitLogMessage(message) {
 }
 
 async function requestShapes(context, uuid) {
-	const data = await fetch(`/api/saveviewer/shapelist?uuid=${uuid}`);
+	const data = await fetch(`/api/shapelist?uuid=${uuid}`);
 	const buffer = await data.json();
 
 	context["shapeList"] = buffer;
@@ -57,7 +57,7 @@ async function requestFrame(context, uuid, index) {
 
 	const frameRequestIndex = context["frameRequestIndex_Latest"]++;
 	
-	const frameData = await fetch(`/api/saveviewer/framedata?index=${index}&uuid=${uuid}`);
+	const frameData = await fetch(`/api/framedata?index=${index}&uuid=${uuid}`);
 	const frameBuffer = await frameData.arrayBuffer();
 
 	if (frameRequestIndex < context["frameRequestIndex_Received"]) {
@@ -198,7 +198,7 @@ function reloadSimulation(context) {
 }
 
 function stopSimulation(context) {
-	fetch(`/api/simrunner/stopsimulation?uuid=${context["simUUID"]}`);
+	fetch(`/api/stopsimulation?uuid=${context["simUUID"]}`);
 }
 
 function processTimelineChange(value, context) {
@@ -237,7 +237,7 @@ async function updateCellInfo(context) {
 		const frameIndex = context["currentFrameIndex"];
 		const cellId = context["selectedCellIdentifier"];
 
-		const cellData = await fetch(`/api/saveviewer/cellinfoindex?cellid=${cellId}&frameindex=${frameIndex}&uuid=${simUUID}`);
+		const cellData = await fetch(`/api/cellinfoindex?cellid=${cellId}&frameindex=${frameIndex}&uuid=${simUUID}`);
 		const cellProps = await cellData.json();
 
 		let cellText = "";

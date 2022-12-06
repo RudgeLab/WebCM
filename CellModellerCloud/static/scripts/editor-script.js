@@ -24,7 +24,7 @@
 	const sourceState = document.getElementById("source-state");
 
 	function saveSource() {
-		fetch(`/api/saveviewer/setsrccontent?uuid=${uuid}`, {
+		fetch(`/api/setsrccontent?uuid=${uuid}`, {
 			method: "POST",
 			headers: {
 				"Accept": "text/plain",
@@ -48,7 +48,7 @@
 
 	sourceUpload.addEventListener("change", doFileUpload, false);
 
-	const sourceResponse = await fetch(`/api/saveviewer/getsrccontent?uuid=${uuid}`);
+	const sourceResponse = await fetch(`/api/getsrccontent?uuid=${uuid}`);
 	if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
 	
 	const sourceBody = await sourceResponse.text();

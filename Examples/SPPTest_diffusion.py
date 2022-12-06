@@ -1,7 +1,7 @@
 import random
 from CellModeller.Regulation.ModuleRegulator import ModuleRegulator
 from CellModeller.Biophysics.GeneralModels.CLSPP import CLSPP
-from CellModeller.GUI import Renderers
+from CellModeller.GUI.WebRenderer import WebRenderer
 from CellModeller.Integration.CLEulerSigIntegrator import CLEulerSigIntegrator #add
 from CellModeller.Signalling.GridDiffusion import GridDiffusion #add
 import numpy as np
@@ -80,13 +80,10 @@ def setup(sim):
     biophys.addPlane((side,0,0),(-1,0,0), 20.)
 
     # Add some objects to draw the models
-    if sim.is_gui:
-        # Add some objects to draw the models
-        from CellModeller.GUI import Renderers
-        therenderer = Renderers.GLSphereRenderer(sim, draw_axis=True, draw_nbr_dir=False, draw_gradient=True)
-        sim.addRenderer(therenderer)
-        sigrend = Renderers.GLGridRenderer(sig, integ) # Add
-        sim.addRenderer(sigrend) #Add
+    renderer = WebRenderer()
+    renderer.attachSignals(sig, integ)
+
+    sim.addRenderer(renderer)
 
     sim.pickleSteps = 1
 

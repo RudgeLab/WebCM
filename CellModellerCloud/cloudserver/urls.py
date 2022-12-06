@@ -22,14 +22,32 @@ from django.contrib import admin
 from . import views
 
 urlpatterns = [
+    # Pages
     re_path(r"view/(?P<sim_uuid>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})/?$", views.viewer),
     re_path(r"edit/(?P<src_uuid>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})/?$", views.editor),
 
     path("", views.home),
     path("login/", views.login_form),
     path("admin/", admin.site.urls),
-    path("api/saveviewer/", include("saveviewer.urls")),
-    path("api/simrunner/", include("simrunner.urls")),
+
+    # APIs
+    path("api/framedata", views.frame_data),
+    path("api/cellinfoindex", views.cell_info_from_index),
+    path("api/shapelist", views.shape_list),
+
+    path("api/listsimulations", views.list_owned_simulations),
+    path("api/listsourcefiles", views.list_owned_source_files),
+
+    path("api/createsourcefile", views.create_source_file),
+    path("api/deletesourcefile", views.delete_source_file),
+
+    path("api/getsrccontent", views.get_source_content),
+    path("api/setsrccontent", views.set_source_content),
+
+    path("api/createnewsimulation", views.create_new_simulation),
+    path("api/stopsimulation", views.stop_simulation),
+    path("api/deletesimulation", views.delete_simulation),
+
     path("api/userauth/", include("userauth.urls")),
 ]
 

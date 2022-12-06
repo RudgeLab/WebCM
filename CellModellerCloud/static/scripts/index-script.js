@@ -36,8 +36,8 @@ async function handleAcceptDelete(button) {
 	const isSimulation = global__dialogDeletePros["simulation"];
 
 	const deleteURL = isSimulation ?
-		`/api/simrunner/deletesimulation?uuid=${uuid}` :
-		`/api/saveviewer/deletesourcefile?uuid=${uuid}`;
+		`/api/deletesimulation?uuid=${uuid}` :
+		`/api/deletesourcefile?uuid=${uuid}`;
 
 	await fetch(deleteURL, {
 		method: "GET",
@@ -102,13 +102,13 @@ async function submitCreateSimulationRequest() {
 	let source = "";
 
 	if (sourceFileSelect.value != "") {
-		const sourceResponse = await fetch(`/api/saveviewer/getsrccontent?uuid=${sourceFileSelect.value}`);
+		const sourceResponse = await fetch(`/api/getsrccontent?uuid=${sourceFileSelect.value}`);
 		if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
 		
 		source = await sourceResponse.text();
 	}
 
-	fetch("/api/simrunner/createnewsimulation", {
+	fetch("/api/createnewsimulation", {
 		method: "POST",
 		headers: {
 			"Accept": "text/plain",
@@ -139,7 +139,7 @@ async function submitCreateSourceRequest() {
 
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 
-	fetch(`/api/saveviewer/createsourcefile?name=${name}`, {
+	fetch(`/api/createsourcefile?name=${name}`, {
 		method: "GET",
 		headers: {
 			"Accept": "text/plain",
@@ -160,7 +160,7 @@ async function submitCreateSourceRequest() {
 }
 
 async function refreshSimList() {
-	const simListResponse = await fetch(`/api/saveviewer/listsimulations`);
+	const simListResponse = await fetch(`/api/listsimulations`);
 	const simList = await simListResponse.json();
 
 	const simItemContainer = document.getElementById("select-sim-item-container");
@@ -189,7 +189,7 @@ async function refreshSimList() {
 }
 
 async function refreshSourceList() {
-	const srcListResponse = await fetch(`/api/saveviewer/listsourcefiles`);
+	const srcListResponse = await fetch(`/api/listsourcefiles`);
 	const srcList = await srcListResponse.json();
 
 	const srcItemContainer = document.getElementById("select-src-item-container");
