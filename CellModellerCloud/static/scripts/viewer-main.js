@@ -136,7 +136,7 @@ function connectToServer(context) {
 				await requestShapes(context, context["simUUID"]);
 
 				if (data.frameCount > 0) {
-					await requestFrame(context, context["simUUID"], 0);
+					await requestFrame(context, context["simUUID"], context["simInfo"].frameIndex);
 				}
 
 				if (data.isOnline) {

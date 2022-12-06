@@ -117,7 +117,11 @@ vec4 traceVolume(vec3 rayOrigin, vec3 rayDir, float rayTMin, float rayTMax) {
 		}
 	}
 
-	return vec4(absorbedColor.rgb, 1.0 - absorbedColor.a);
+	//The calling code expects the color to be regular, non-pre-multiplied RGBA values, so 
+	//we need to do a conversion here
+	float finalAlpha = 1.0 - absorbedColor.a;
+
+	return vec4(absorbedColor.rgb / finalAlpha, finalAlpha);
 }
 
 void main() {
