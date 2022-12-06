@@ -23,12 +23,11 @@ from . import views
 
 urlpatterns = [
     re_path(r"view/(?P<sim_uuid>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})/?$", views.viewer),
-    re_path(r"edit/(?P<sim_uuid>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})/?$", views.editor),
+    re_path(r"edit/(?P<src_uuid>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})/?$", views.editor),
 
     path("", views.home),
     path("login/", views.login_form),
     path("admin/", admin.site.urls),
-    path("api/listsimualtions/", views.list_owned_simulations),
     path("api/saveviewer/", include("saveviewer.urls")),
     path("api/simrunner/", include("simrunner.urls")),
     path("api/userauth/", include("userauth.urls")),

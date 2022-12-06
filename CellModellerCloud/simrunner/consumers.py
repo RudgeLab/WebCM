@@ -1,5 +1,6 @@
 from channels.generic.websocket import WebsocketConsumer
 
+from cloudserver.models import lookup_simulation
 from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
@@ -26,7 +27,7 @@ class UserCommsConsumer(WebsocketConsumer):
 		if msg_data["action"] == "connectto":
 			uuid = UUID(msg_data["data"])
 
-			if not archiver.get_simulation(uuid) is None:
+			if not lookup_simulation(uuid) is None:
 				if not self.sim_uuid == None:
 					wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
 
@@ -47,7 +48,7 @@ class UserCommsConsumer(WebsocketConsumer):
 		return
 
 	def send_sim_header(self):
-		simulation = archiver.get_simulation(self.sim_uuid)
+		simulation = lookup_simulation(self.sim_uuid)
 		index_data = archiver.get_instance_index_data(self.sim_uuid)
 		is_online = manager.is_simulation_running(self.sim_uuid)
 

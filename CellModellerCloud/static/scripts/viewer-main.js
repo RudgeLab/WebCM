@@ -316,6 +316,8 @@ function doMousePick(context) {
 	const cameraPos = camera["position"];
 
 	const dataBuffer = context["cellData"];
+	if (!dataBuffer) return;
+
 	const cellCount = context["cellCount"];
 	const dataView = new DataView(dataBuffer);
 

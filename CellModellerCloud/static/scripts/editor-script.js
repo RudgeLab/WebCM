@@ -18,13 +18,13 @@
 	}, true);
 
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
-	const uuid = param__simulationUUID;
+	const uuid = param__sourceUUID;
 
 	const sourceUpload = document.getElementById("source-upload-file");
 	const sourceState = document.getElementById("source-state");
 
 	function saveSource() {
-		fetch(`/api/saveviewer/setsimsource?uuid=${uuid}`, {
+		fetch(`/api/saveviewer/setsrccontent?uuid=${uuid}`, {
 			method: "POST",
 			headers: {
 				"Accept": "text/plain",
@@ -48,7 +48,7 @@
 
 	sourceUpload.addEventListener("change", doFileUpload, false);
 
-	const sourceResponse = await fetch(`/api/saveviewer/getsimsource?uuid=${uuid}`);
+	const sourceResponse = await fetch(`/api/saveviewer/getsrccontent?uuid=${uuid}`);
 	if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
 	
 	const sourceBody = await sourceResponse.text();

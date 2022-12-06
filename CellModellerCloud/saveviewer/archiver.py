@@ -18,23 +18,9 @@ def initialize_save_archiver():
 	# Create the root directory
 	pathlib.Path(global__archiver.archive_root).mkdir(parents=False, exist_ok=True)
 
+def register_simulation(user, sim_title, sim_desc):
 	# We don't want to import this globally because it causes problems
 	# when the archiver is imported from the simulation instance process
-	from cloudserver.models import SimulationEntry
-
-	global__archiver.sim_data = {}
-
-	for sim in SimulationEntry.objects.all():
-		index_path = os.path.join(sim.save_location, "index.json")
-
-		with open(index_path, "r") as index_file:
-			index_data = json.loads(index_file.read())
-
-		global__archiver.sim_data[sim.uuid] = index_data
-
-	return
-
-def register_simulation(user, sim_title, sim_desc):
 	from cloudserver.models import SimulationEntry
 
 	global global__archiver
@@ -50,24 +36,14 @@ def register_simulation(user, sim_title, sim_desc):
 	return entry
 
 def remove_simulation(sim_uuid):
-	from cloudserver.models import SimulationEntry
-
 	global global__archiver
 
-	entry = SimulationEntry.objects.get(uuid=sim_uuid)
+	entry = __get_simulation(sim_uuid)
 	dir_path = entry.save_location
 
 	entry.delete()
 
 	shutil.rmtree(dir_path)
-
-def get_simulation(id):
-	from cloudserver.models import SimulationEntry
-	
-	try:
-		return SimulationEntry.objects.get(uuid=id)
-	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
-		return None
 
 def update_instance_index(uuid, data):
 	global global__archiver
@@ -81,10 +57,25 @@ def get_instance_index_data(uuid):
 	assert type(uuid) is UUID
 
 	global global__archiver
-	return global__archiver.sim_data[uuid]
+
+	#
+	if not uuid in global__archiver.sim_data:
+		from cloudserver.models import SimulationEntry
+
+		sim = __get_simulation(uuid)
+		index_path = os.path.join(sim.save_location, "index.json")
+
+		with open(index_path, "r") as index_file:
+			index_data = json.loads(index_file.read())
+
+		global__archiver.sim_data[sim.uuid] = index_data
+
+		return index_data
+	else:
+		return global__archiver.sim_data[uuid]
 
 def get_simulation_step_files(uuid, index):
-	simulation = get_simulation(uuid)
+	simulation = __get_simulation(uuid)
 	index_data = get_instance_index_data(uuid)
 
 	step_frame = os.path.join(simulation.save_location, index_data["stepframes"][index])
@@ -141,7 +132,7 @@ def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
 	return __update_sim_index(index_path, update_action)
 
 def read_simulation_source(uuid):
-	simulation = get_simulation(uuid)
+	simulation = __get_simulation(uuid)
 	source_path = os.path.join(simulation.save_location, "source.py")
 	source_content = ""
 	
@@ -151,10 +142,15 @@ def read_simulation_source(uuid):
 	return source_content
 
 def write_simulation_source(uuid, source_content):
-	simulation = get_simulation(uuid)
+	simulation = __get_simulation(uuid)
 	source_path = os.path.join(simulation.save_location, "source.py")
 	
 	with open(source_path, "wb") as source_file:
 		source_file.write(source_content.encode("utf-8"))
 
 	return
+
+def __get_simulation(id):
+	from cloudserver.models import lookup_simulation
+
+	return lookup_simulation(id)

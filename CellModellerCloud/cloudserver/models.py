@@ -11,4 +11,27 @@ class SimulationEntry(models.Model):
 	save_location = models.TextField()
 
 	def __str__(self):
-		return f"({self.owner}, {self.uuid})"
+		return f"(Simulation: {self.uuid}, {self.owner})"
+
+class SourceContentEntry(models.Model):
+	owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+	name = models.TextField()
+	uuid = models.UUIDField(default=uuid.uuid4, editable=True)
+	content = models.TextField()
+
+	def __str__(self):
+		return f"(Source: {self.uuid}, {self.owner})"
+
+def lookup_simulation(id):
+	from cloudserver.models import SimulationEntry
+	
+	try:
+		return SimulationEntry.objects.get(uuid=id)
+	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+		return None
+
+def lookup_source_content(id):
+	try:
+		return SourceContentEntry.objects.get(uuid=id)
+	except (SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
+		return None

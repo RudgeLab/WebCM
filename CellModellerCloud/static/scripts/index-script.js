@@ -1,4 +1,4 @@
-var global__dialogDeleteUUID = null;
+var global__dialogDeletePros = null;
 
 function showDialog(visible, message) {
 	const dialogLayer = document.getElementById("dialog-layer");
@@ -16,19 +16,30 @@ function closeDialog() {
 	showDialog(false, "");
 }
 
-function handleRequestDelete(name, uuid) {
-	openDialog(`Delete simulation "${name}"?`);
-	
-	global__dialogDeleteUUID = uuid;
+function handleDeleteSimulation(title, uuid) {
+	global__dialogDeletePros = { "uuid": uuid, "simulation": true };
+
+	openDialog(decodeURIComponent(title));
+}
+
+function handleDeleteSourceContent(title, uuid) {
+	global__dialogDeletePros = { "uuid": uuid, "simulation": false };
+
+	openDialog(title);
 }
 
 async function handleAcceptDelete(button) {
 	closeDialog();
 
-	const csrfToken = document.querySelector("#create-form input[name='csrfmiddlewaretoken']");
-	const uuid = global__dialogDeleteUUID;
+	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
+	const uuid = global__dialogDeletePros["uuid"];
+	const isSimulation = global__dialogDeletePros["simulation"];
 
-	await fetch(`/api/simrunner/deletesimulation?uuid=${uuid}`, {
+	const deleteURL = isSimulation ?
+		`/api/simrunner/deletesimulation?uuid=${uuid}` :
+		`/api/saveviewer/deletesourcefile?uuid=${uuid}`;
+
+	await fetch(deleteURL, {
 		method: "GET",
 		headers: {
 			"Accept": "text/plain",
@@ -37,7 +48,8 @@ async function handleAcceptDelete(button) {
 		}
 	});
 
-	await refreshSimList();
+	if (isSimulation) await refreshSimList();
+	else await refreshSourceList();
 }
 
 function setupTabs() {
@@ -69,28 +81,32 @@ function markAsError(elemId, isError) {
 	return isError;
 }
 
-async function submitCreateRequest() {
+async function submitCreateSimulationRequest() {
 	const simName = document.getElementById("input-create-name");
 	const isVersionCM4 = document.getElementById("input-radio-cm4");
 	const isVersionCM5 = document.getElementById("input-radio-cm5");
-	const sourceUpload = document.getElementById("input-upload-file");
+	const sourceFileSelect = document.getElementById("select-simulation-src-file");
 
 	if (!isVersionCM4.checked && !isVersionCM5.checked) {
 		alert("Hmmm... neither CM4 nor CM5 is selected. This shouldn't happen!");
 		return;
 	}
 
-	let invalid = false;
-	invalid |= markAsError("input-create-name", simName.value == "");
-	invalid |= markAsError("upload-button-text", sourceUpload.files.length == 0);
-
-	if (invalid) return;
+	if (markAsError("input-create-name", simName.value == "")) return;
 
 	const name = simName.value;
 	const version = isVersionCM5.checked ? "CellModeller5" : "CellModeller4";
-	const source = await sourceUpload.files[0].slice().text();
 
-	const csrfToken = document.querySelector("#create-form input[name='csrfmiddlewaretoken']");
+	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
+
+	let source = "";
+
+	if (sourceFileSelect.value != "") {
+		const sourceResponse = await fetch(`/api/saveviewer/getsrccontent?uuid=${sourceFileSelect.value}`);
+		if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
+		
+		source = await sourceResponse.text();
+	}
 
 	fetch("/api/simrunner/createnewsimulation", {
 		method: "POST",
@@ -117,8 +133,34 @@ async function submitCreateRequest() {
 	});
 }
 
+async function submitCreateSourceRequest() {
+	const srcName = document.getElementById("input-create-source");
+	const name = encodeURIComponent(srcName.value)
+
+	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
+
+	fetch(`/api/saveviewer/createsourcefile?name=${name}`, {
+		method: "GET",
+		headers: {
+			"Accept": "text/plain",
+			"Content-Type": "text/plain",
+			"X-CSRFToken": csrfToken.value,
+		}
+	})
+	.then(async response => {
+		if (!response.ok) throw new Error(await response.text());
+		return response.text();
+	})
+	.then((uuid) => {
+		window.location.href = `/edit/${uuid}/`;
+	})
+	.catch((error) => {
+		console.log(`Error when creating new source file: ${error}`)
+	});
+}
+
 async function refreshSimList() {
-	const simListResponse = await fetch(`/api/listsimualtions/`);
+	const simListResponse = await fetch(`/api/saveviewer/listsimulations`);
 	const simList = await simListResponse.json();
 
 	const simItemContainer = document.getElementById("select-sim-item-container");
@@ -127,35 +169,81 @@ async function refreshSimList() {
 	for (let sim of simList) {
 		const statusText = sim.isOnline ? "Online" : "Offline";
 
-		simItemContainer.innerHTML +=
+		const item = document.createElement("div");
+		item.innerHTML = 
 `<div class="select-sim-item">
 	<div class="select-sim-labels">
 		<p>${sim.title}</p>
 		<p>${statusText}</p>
 	</div>
 	<div class="select-sim-buttons">
-		<a class="select-sim-button sim-button-other" onclick="handleRequestDelete('${sim.title}', '${sim.uuid}')"><span class="shape-cross"></span></a>
+		<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
 		<a class="select-sim-button sim-button-view" href="/view/${sim.uuid}/" target="_blank"><span class="shape-right-arrow"></span></a>
 	</div>
 </div>`;
+
+		item.querySelector("a.sim-button-other").onclick = e => handleDeleteSimulation(`Delete simulation '${sim.title}'?`, sim.uuid);
+
+		simItemContainer.appendChild(item.firstChild);
 	}
 }
 
-window.addEventListener("load", () => {
+async function refreshSourceList() {
+	const srcListResponse = await fetch(`/api/saveviewer/listsourcefiles`);
+	const srcList = await srcListResponse.json();
+
+	const srcItemContainer = document.getElementById("select-src-item-container");
+	srcItemContainer.innerHTML = "";
+
+	for (let src of srcList) {
+		const item = document.createElement("div");
+		item.innerHTML = 
+`<div class="select-sim-item">
+	<div class="select-sim-labels" style="height: unset;">
+		<p style="display:flex;align-items:center;height:100%;">${src.title}</p>
+	</div>
+	<div class="select-sim-buttons">
+		<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
+		<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/" target="_blank"><span class="shape-right-arrow"></span></a>
+	</div>
+</div>`;
+
+		item.querySelector("a.sim-button-other").onclick = e => handleDeleteSourceContent(`Delete simulation '${src.title}'?`, src.uuid);
+
+		srcItemContainer.appendChild(item.firstChild);
+	}
+
+	const sourceFileSelect = document.getElementById("select-simulation-src-file");
+	sourceFileSelect.innerHTML = `<option value="">&ltEmpty File&gt</option>`;
+
+	for (let src of srcList) {
+		const item = document.createElement("div");
+		item.innerHTML = `<option value="${src.uuid}"></option>`;
+		item.firstChild.innerText = src.title;
+
+		sourceFileSelect.appendChild(item.firstChild);
+	}
+}
+
+window.addEventListener("load", (event) => {
 	setupTabs();
 
-	const sourceUpload = document.getElementById("input-upload-file");
-	const uploadName = document.getElementById("upload-file-name");
-
-	sourceUpload.addEventListener("change", (e) => {
-		const files = sourceUpload.files;
-		if (files.length <= 0) return;
-
-		uploadName.innerText = files[0].name;
-	});
-
 	const createButton = document.getElementById("create-button");
-	createButton.onclick = (e) => submitCreateRequest();
+	createButton.onclick = (e) => submitCreateSimulationRequest();
+
+	const createSourceButton = document.getElementById("create-source-button");
+	createSourceButton.onclick = (e) => submitCreateSourceRequest();
 
 	refreshSimList();
+	refreshSourceList();
+});
+
+window.addEventListener("pageshow", (event) => {
+	//There is a big in Google Chrome where the requests sent by the following methods
+	//never get retrieved. This only happens here, in the pageshow event. Adding a delay
+	//seems to fix the problem.
+	setTimeout(async () => {
+		await refreshSimList();
+		await refreshSourceList();
+	}, 100);
 });

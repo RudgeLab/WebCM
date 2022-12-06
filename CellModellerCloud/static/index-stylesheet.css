@@ -24,7 +24,7 @@ p {
 	display: flex;
 	flex-direction: row;
 
-	justify-content: space-between;
+	justify-content: right;
 	align-items: center;
 }
 
@@ -138,10 +138,12 @@ p {
 .tab-item {
 	display: flex;
 	justify-content: center;
+	align-items: center;
+	min-height: 3rem;
 
 	flex: 1;
 
-	padding: 1rem;
+	padding: 0.5rem;
 }
 
 .hidden-tab {
@@ -195,7 +197,7 @@ p {
 	flex-grow: 1;
 }
 
-input[type="text"] {
+input[type="text"], select {
 	display: block;
 	width: 100%;
 	height: 3.125rem;
@@ -453,4 +455,24 @@ input[type="text"] {
 
 	border: solid black;
 	border-width: 0 0px 3px 0;
+}
+
+#create-src-frame {
+	display: flex;
+	flex-direction: column;
+
+	padding: 1rem;
+}
+
+#input-create-source {
+	margin-top: 0;
+}
+
+#select-src-item-container {
+	width: 100%;
+	height: 100%;
+
+	border: solid #aaa 1px;
+	background-color: #ddd;
+	overflow: auto;	
 }

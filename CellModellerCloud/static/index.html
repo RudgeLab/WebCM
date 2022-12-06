@@ -8,29 +8,32 @@
 {% block content %}
 <div id="all-encompassing-root">
 <div id="content-root">
+	{% csrf_token %}
 	<div id="main-content">
+		<!-- Tab headers -->
 		<div id="tab-container">
-			<div class="tab-item">
+			<div class="tab-item hidden-tab">
 				<p>Select Simulation</p>
 			</div>
-			<div class="tab-item hidden-tab">
+			<div class="tab-item">
 				<p>Create Simulation</p>
 			</div>
 			<div class="tab-item hidden-tab">
-				<p>User Account</p>
+				<p>Source Files</p>
 			</div>
 		</div>
+		<!-- Tab frames -->
 		<div id="tab-window">
-			<div class="tab-frame" id="select-sim-frame">
+			<!-- Select simulation tab -->
+			<div id="select-sim-frame" class="tab-frame inactive-frame">
 				<div id="select-sim-item-container">
 
 				</div>
 			</div>
-			<div class="tab-frame inactive-frame" id="create-sim-frame">
+			<!-- Create simulation tab -->
+			<div id="create-sim-frame" class="tab-frame">
 				<div id="create-form-container">
 					<div id="create-form">
-						{% csrf_token %}
-	
 						<div class="row-fill">
 							<div class="row-element">
 								<label for="name">Simulation Name</label> 
@@ -53,23 +56,36 @@
 								</form>
 							</div>
 						</div>
-						
+						<div class="row-fill">
+							<div class="row-element">
+								<label for="name">Source file</label> 
+								<select id="select-simulation-src-file">
+									
+								</select>
+							</div>
+							<div class="row-element row-padding"></div>
+							<div class="row-element">
+							</div>
+						</div>
 					</div>
 	
 					<div class="row-push">
-						<div class="row">
-							<label for="input-upload-file">
-								<input type="file" name="upload-file" id="input-upload-file" style="display: none;" accept=".txt,.py">
-								<div id="upload-button-text" class="plain-button">Upload Source</div>
-							</label>
-							<div id="upload-file-name"></div>
-						</div>
 						<button id="create-button" class="submit-button">Create Simulation</button>
 					</div>
+					
 				</div>
 			</div>
-			<div class="tab-frame inactive-frame">
-			
+			<!-- Create/Select source file tab -->
+			<div id="create-src-frame" class="tab-frame inactive-frame">
+				<label for="name">Create Source File</label> 
+				<div class="row-fill" style="margin-top:0.1rem;margin-bottom:1rem;">
+					<input id="input-create-source" style="margin-right:1rem" type="text" placeholder="File Name" name="name">
+					<button id="create-source-button" class="submit-button" style="width:15rem;height:3.125rem">Create Source File</button>
+				</div>
+				<label for="name">Select Source File</label>
+				<div id="select-src-item-container">
+
+				</div>
 			</div>
 		</div>
 	</div>
