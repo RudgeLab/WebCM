@@ -178,7 +178,7 @@ async function refreshSimList() {
 	</div>
 	<div class="select-sim-buttons">
 		<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
-		<a class="select-sim-button sim-button-view" href="/view/${sim.uuid}/" target="_blank"><span class="shape-right-arrow"></span></a>
+		<a class="select-sim-button sim-button-view" href="/view/${sim.uuid}/"><span class="shape-right-arrow"></span></a>
 	</div>
 </div>`;
 
@@ -204,7 +204,7 @@ async function refreshSourceList() {
 	</div>
 	<div class="select-sim-buttons">
 		<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
-		<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/" target="_blank"><span class="shape-right-arrow"></span></a>
+		<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/"><span class="shape-right-arrow"></span></a>
 	</div>
 </div>`;
 
