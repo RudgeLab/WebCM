@@ -17,6 +17,7 @@ class UserCommsConsumer(WebsocketConsumer):
 
 	def connect(self):
 		self.sim_uuid = None
+		self.is_reloading = False
 		self.accept()
 
 	def receive(self, text_data):
@@ -42,15 +43,25 @@ class UserCommsConsumer(WebsocketConsumer):
 		elif msg_data["action"] == "stop":
 			manager.kill_simulation(self.sim_uuid)
 		elif msg_data["action"] == "reload":
-			self.handle_reload_action()
+			if self.is_reloading:
+				return
+			
+			self.is_reloading = True
+			cold_restart = self.handle_reload_action()
+			self.is_reloading = False
+
+			if cold_restart:
+				self.send_sim_header()
 
 		return
 
 	def handle_reload_action(self):
 		if manager.is_simulation_running(self.sim_uuid):
 			manager.reload_simulation(self.sim_uuid)
+			return False
 		else:
 			manager.resurrect_simulation(self.sim_uuid)
+			return True
 
 	def send_sim_header(self):
 		simulation = lookup_simulation(self.sim_uuid)

@@ -93,8 +93,6 @@ def resurrect_simulation(uuid):
 	simulation = lookup_simulation(uuid)
 
 	with global__instance_lock:
-		print("Reloading simulation")
-
 		sim_instance = SimulationInstance(uuid, index_data["backend_version"], simulation.save_location)
 		sim_instance.launch()
 
