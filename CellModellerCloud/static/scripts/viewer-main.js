@@ -2,6 +2,7 @@ import * as render from './viewer-render.js'
 
 function setSimName(name) {
 	document.getElementById("sim-name").innerHTML = `Name: ${name}`;
+	document.title = `${name} - CellModeller Simulation`;
 }
 
 function setSimFrame(index, frameCount) {

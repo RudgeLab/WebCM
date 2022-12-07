@@ -51,8 +51,11 @@ def viewer(request, sim_uuid):
 def editor(request, src_uuid):
 	uuid_val = UUID(src_uuid)
 
-	from_simulation = not lookup_simulation(uuid_val) is None
-	from_source_file = not lookup_source_content(uuid_val) is None
+	as_simulation = lookup_simulation(uuid_val)
+	as_source_file = lookup_source_content(uuid_val)
+
+	from_simulation = not as_simulation is None
+	from_source_file = not as_source_file is None
 
 	if not from_simulation and not from_source_file:
 		return HttpResponseNotFound(f"The provided UUID ({src_uuid}) did not match a simulation or a source file")
@@ -63,7 +66,13 @@ def editor(request, src_uuid):
 		index_data = index_file.read()
 
 	is_online = from_source_file or manager.is_simulation_running(uuid_val)
-	context = RequestContext(request, { "source_uuid": src_uuid, "is_online": is_online })
+
+	if from_source_file:
+		page_title = f"{as_source_file.name} - Source file"
+	else:
+		page_title = f"{as_simulation.title} - Simulation source"
+
+	context = RequestContext(request, { "source_uuid": src_uuid, "is_online": is_online, "page_title": page_title })
 	content = Template(index_data).render(context)
 
 	return HttpResponse(content)
