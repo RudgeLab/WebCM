@@ -27,14 +27,11 @@ def decode_json_message(message):
 	return (message_key, message_value)
 
 class SimulationInstance:
-	def __init__(self, uuid, version, source, root_path):
+	def __init__(self, uuid, version, root_path):
 		self.uuid = uuid
 		self.backend_version = version
 		self.root_path = root_path
 		self.is_alive = True
-
-		with open(self.get_source_file_path(), "wb") as srcfile:
-			srcfile.write(source.encode("utf-8"))
 	
 	def __del__(self):
 		self.close()

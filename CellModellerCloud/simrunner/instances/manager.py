@@ -21,7 +21,9 @@ def create_simulation(user, sim_title, sim_desc, sim_source, sim_version):
 	sim_uuid = sim_entry.uuid
 
 	with global__instance_lock:
-		sim_instance = SimulationInstance(sim_uuid, sim_version, sim_source, sim_entry.save_location)
+		archiver.write_sim_source_to_location(sim_entry.save_location, sim_source)
+
+		sim_instance = SimulationInstance(sim_uuid, sim_version, sim_entry.save_location)
 		sim_instance.launch()
 
 		global__active_instances[sim_uuid] = sim_instance
@@ -63,7 +65,7 @@ def is_simulation_running(uuid):
 		process = global__active_instances[uuid]
 		return not process.is_closed() if not process is None else True
 
-def reload_simulation(uuid: str):
+def reload_simulation(uuid):
 	assert type(uuid) is UUID
 
 	global global__active_instances

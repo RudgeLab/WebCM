@@ -58,10 +58,7 @@ def get_instance_index_data(uuid):
 
 	global global__archiver
 
-	#
 	if not uuid in global__archiver.sim_data:
-		from cloudserver.models import SimulationEntry
-
 		sim = __get_simulation(uuid)
 		index_path = os.path.join(sim.save_location, "index.json")
 
@@ -131,24 +128,25 @@ def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
 
 	return __update_sim_index(index_path, update_action)
 
-def read_simulation_source(uuid):
-	simulation = __get_simulation(uuid)
-	source_path = os.path.join(simulation.save_location, "source.py")
-	source_content = ""
+def read_sim_source_from_location(location):
+	source_path = os.path.join(location, "source.py")
 	
 	with open(source_path, "r") as source_file:
-		source_content = source_file.read()
+		return source_file.read()
 
-	return source_content
-
-def write_simulation_source(uuid, source_content):
-	simulation = __get_simulation(uuid)
-	source_path = os.path.join(simulation.save_location, "source.py")
+def write_sim_source_to_location(location, source_content):
+	source_path = os.path.join(location, "source.py")
 	
 	with open(source_path, "wb") as source_file:
 		source_file.write(source_content.encode("utf-8"))
 
-	return
+def read_simulation_source(uuid):
+	simulation = __get_simulation(uuid)
+	return read_sim_source_from_location(simulation.save_location)
+
+def write_simulation_source(uuid, source_content):
+	simulation = __get_simulation(uuid)
+	write_sim_source_to_location(simulation.save_location, source_content)
 
 def __get_simulation(id):
 	from cloudserver.models import lookup_simulation

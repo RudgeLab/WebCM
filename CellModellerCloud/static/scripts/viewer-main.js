@@ -101,7 +101,7 @@ function connectToServer(context) {
 	return new Promise((resolve, reject) => {
 		setStatusMessage("Connecting");
 
-		var commsSocket = new WebSocket(`ws://${window.location.host}/ws/usercomms/`);
+		let commsSocket = new WebSocket(`ws://${window.location.host}/ws/usercomms/`);
 		
 		commsSocket.onopen = function(e) {
 			setStatusMessage("Connected");
@@ -179,14 +179,6 @@ function connectToServer(context) {
 
 		context["commsSocket"] = commsSocket;
 	});
-}
-
-function recompileDevSimulation(context) {
-	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "devrecompile", "data": "" }));
-
-		setStatusMessage("Recompiling");
-	}
 }
 
 function reloadSimulation(context) {
