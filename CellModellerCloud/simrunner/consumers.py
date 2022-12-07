@@ -12,10 +12,8 @@ from uuid import UUID
 import json
 
 class UserCommsConsumer(WebsocketConsumer):
-	def __init__(self, custom_action_callback=None, *args, **kwargs):
+	def __init__(self, *args, **kwargs):
 		super().__init__(args, kwargs)
-
-		self.custom_action_callback = custom_action_callback
 
 	def connect(self):
 		self.sim_uuid = None
@@ -44,9 +42,15 @@ class UserCommsConsumer(WebsocketConsumer):
 		elif msg_data["action"] == "stop":
 			manager.kill_simulation(self.sim_uuid)
 		elif msg_data["action"] == "reload":
-			manager.reload_simulation(self.sim_uuid)
+			self.handle_reload_action()
 
 		return
+
+	def handle_reload_action(self):
+		if manager.is_simulation_running(self.sim_uuid):
+			manager.reload_simulation(self.sim_uuid)
+		else:
+			manager.resurrect_simulation(self.sim_uuid)
 
 	def send_sim_header(self):
 		simulation = lookup_simulation(self.sim_uuid)

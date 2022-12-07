@@ -175,6 +175,8 @@ function connectToServer(context) {
 		
 		commsSocket.onclose = (e) => {
 			setStatusMessage("Not connected");
+
+			context["commsSocket"] = null;
 		};
 
 		context["commsSocket"] = commsSocket;
@@ -657,6 +659,10 @@ async function main() {
 	canvas.addEventListener("keyup", e => processKeyButton(e, context, false));
 	canvas.addEventListener("wheel", e => processMouseWheel(e, context));
 	canvas.addEventListener("contextmenu", e => { e.preventDefault() });
+
+	//Create initialization log
+	const logCloseButton = document.getElementById("message-log-close");
+	logCloseButton.onclick = () => closeInitLogWindow(context, false);
 
 	//Initialize render loop
 	var lastTime = 0;

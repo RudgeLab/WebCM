@@ -3,7 +3,7 @@
 	const editor = monaco.editor.create(editorDiv, {
 		value: "",
 		language: "python",
-		readOnly: !param__isOnline,
+		readOnly: false,
 		automaticLayout: true,
 	});
 

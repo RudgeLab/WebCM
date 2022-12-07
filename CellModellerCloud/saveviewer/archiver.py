@@ -32,6 +32,7 @@ def register_simulation(user, sim_title, sim_desc):
 	entry.save()
 
 	os.mkdir(save_dir)
+	os.mkdir(os.path.join(save_dir, "cache"))
 
 	return entry
 
@@ -95,7 +96,6 @@ def write_empty_index_file(path, backend_version):
 		indexfile.write(sim_data_str)
 
 	return init_index_data
-
 
 def __update_sim_index(index_path, callback):
 	with open(index_path, "r+") as index_file:

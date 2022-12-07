@@ -3,6 +3,8 @@ import traceback
 import json
 import sys, os
 
+from pathlib import Path
+
 from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
@@ -183,8 +185,6 @@ def instance_control_thread(pipe, instance_params):
 		params.cache_relative_prefix = "cache"
 		params.cache_dir = os.path.join(params.sim_root_dir, params.cache_relative_prefix)
 		
-		os.mkdir(params.cache_dir)
-
 		index_path = os.path.join(params.sim_root_dir, "index.json")
 
 		while running:

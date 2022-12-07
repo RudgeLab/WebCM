@@ -80,3 +80,22 @@ def reload_simulation(uuid):
 		sim_instance = global__active_instances[uuid]
 	
 	sim_instance.reload_simulation()
+
+def resurrect_simulation(uuid):
+	assert type(uuid) is UUID
+
+	global global__active_instances
+	global global__instance_lock
+
+	from cloudserver.models import lookup_simulation
+
+	index_data = archiver.get_instance_index_data(uuid)
+	simulation = lookup_simulation(uuid)
+
+	with global__instance_lock:
+		print("Reloading simulation")
+
+		sim_instance = SimulationInstance(uuid, index_data["backend_version"], simulation.save_location)
+		sim_instance.launch()
+
+		global__active_instances[uuid] = sim_instance
