@@ -107,9 +107,9 @@ class CellModeller4Backend(SimulationBackend):
 			# expects that the length will be calculated based on how its done in CM5.
 			final_length = max(state.length + 1.0 - 2.0 * state.radius, 0)
 
-			byte_buffer.write(struct.pack("<fff", state.pos[0], -state.pos[2], state.pos[1]))
-			byte_buffer.write(struct.pack("<fff", state.dir[0],  state.dir[2], state.dir[1]))
-			byte_buffer.write(struct.pack("<ffI", final_length,  state.radius, packed_color))
+			byte_buffer.write(struct.pack("<fff", state.pos[0], state.pos[2], state.pos[1]))
+			byte_buffer.write(struct.pack("<fff", state.dir[0], state.dir[2], state.dir[1]))
+			byte_buffer.write(struct.pack("<ffI", final_length, state.radius, packed_color))
 
 		# Write cell IDs
 		for it in cell_states.keys():
