@@ -37,6 +37,7 @@ class UserCommsConsumer(WebsocketConsumer):
 
 				self.send_sim_header()
 			else:
+				# The UUID provided does not match any simulation, either online or offline
 				self.close(code=4101)
 		elif msg_data["action"] == "getheader":
 			self.send_sim_header()

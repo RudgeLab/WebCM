@@ -41,8 +41,6 @@ class SimulationInstance:
 		index_data = archiver.write_empty_index_file(os.path.join(self.root_path, "index.json"), self.backend_version)
 		archiver.update_instance_index(self.uuid, index_data)
 
-		wsgroups.create_websocket_group(f"simcomms/{str(self.uuid)}")
-
 		# Launch the simulation process
 		params = _InstanceProcessParams()
 		params.root_dir = self.root_path
