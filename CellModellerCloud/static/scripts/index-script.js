@@ -70,6 +70,8 @@ function setupTabs() {
 	for (let i = 0; i < allTabs.length; i++) {
 		allTabs[i].onclick = (e) => activateTab(i);
 	}
+
+	activateTab(0);
 }
 
 function markAsError(elemId, isError) {
