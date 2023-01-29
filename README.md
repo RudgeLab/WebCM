@@ -1,6 +1,8 @@
 # CellModellerCloud
 
-CellModellerCloud is a web platform used to develop and run bacterial simulations
+CellModellerCloud is a web platform used to develop and run bacterial simulations in a lab environment.
+
+![Screenshot](./Documentation/ScreenshotHeader.png)
 
 ## Setup
 
