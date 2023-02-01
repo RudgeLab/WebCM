@@ -6,13 +6,13 @@ WebCM uses CellModeller to perform cellular simulations. You do not need CellMod
 
 First, run the following to clone the repository:
 
-	git clone https://github.com/RudgeLab/CellModellerCloud.git
+	git clone https://github.com/RudgeLab/WebCM.git
 
 You then need to install the required Python packages by running:
 
 	pip install -r requirements.txt
 
-You will also need to create the database used be Django. To do this, navigate to the server's root directory (under `CellModellerCloud/`) and run:
+You will also need to create the database used be Django. To do this, navigate to the server's root directory (under `WebCM/`) and run:
 
 	python ./manage.py migrate
 
