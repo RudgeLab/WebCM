@@ -508,11 +508,18 @@ function processKeyButton(event, context, isdown) {
 function processMouseMove(event, context) {
 	var input = context["input"];
 
-	const deltaX = event.offsetX - input["lastMouseX"];
-	const deltaY = event.offsetY - input["lastMouseY"];
+	//offsetX and offsetY are in CSS pixels (I think). This means that if you zoom in
+	//the offsets will be scaled down, even if you are cliking on the same pixel. So,
+	//we need to scale them back up
+	const canvas = context["graphics"]["canvas"];
+	const mouseX = event.offsetX * (context["graphics"]["targetWidth"] / canvas.clientWidth);
+	const mouseY = event.offsetY * (context["graphics"]["targetHeight"] / canvas.clientHeight);
 
-	input["lastMouseX"] = event.offsetX;
-	input["lastMouseY"] = event.offsetY;
+	const deltaX = mouseX - input["lastMouseX"];
+	const deltaY = mouseY - input["lastMouseY"];
+
+	input["lastMouseX"] = mouseX;
+	input["lastMouseY"] = mouseY;
 
 	//Move orbit
 	if (input["middleButtonPressed"] && !context["isLogWindowOpen"]) {
