@@ -401,9 +401,8 @@ async function initFrame(gl, context) {
 
 	//Initialize input details
 	context["input"] = {
-		"leftButtonPressed": false,
-		"middleButtonPressed": false,
-		"shiftPressed": false,
+		"orbitButtonPressed": false,
+		"panButtonPressed": false,
 
 		"lastMouseX": 0,
 		"lastMouseY": 0
@@ -495,14 +494,7 @@ function resizeCanvas(gl, context, canvas) {
 }
 
 function processKeyButton(event, context, isdown) {
-	var input = context["input"];
-
-	switch (event.code) {
-	case "ShiftLeft":
-	case "ShiftRight":
-		input["shiftPressed"] = isdown;
-		break;
-	}
+	//Do nothing
 }
 
 function processMouseMove(event, context) {
@@ -521,38 +513,39 @@ function processMouseMove(event, context) {
 	input["lastMouseX"] = mouseX;
 	input["lastMouseY"] = mouseY;
 
+	//Do not process input if the log window is open
+	if (context["isLogWindowOpen"]) return;
+
 	//Move orbit
-	if (input["middleButtonPressed"] && !context["isLogWindowOpen"]) {
-		var camera = context["camera"];
+	const camera = context["camera"];
 
-		if (input["shiftPressed"]) {
-			var cameraRotation = camera["rotation"];
+	if (input["orbitButtonPressed"]) {
+		const sensitivity = camera["orbitLookSensitivity"];
 
-			const sensitivity = 0.08;
-			
-			//Update up direction
-			const sensY = sensitivity * deltaY;
+		camera["yaw"] = (camera["yaw"] - sensitivity * deltaX) % 360.0;
+		camera["pitch"] = (camera["pitch"] - sensitivity * deltaY) % 360.0;
+	} else if (input["panButtonPressed"]) {
+		const cameraRotation = camera["rotation"];
 
-			var up = vec3.fromValues(0, 1, 0);
-			vec3.transformQuat(up, up, cameraRotation);
-			vec3.multiply(up, up, vec3.fromValues(sensY, sensY, sensY));
-			
-			vec3.add(camera["orbitCenter"], up, camera["orbitCenter"]);
+		const sensitivity = 0.08;
+		
+		//Update up direction
+		const sensY = sensitivity * deltaY;
 
-			//Update right direction
-			const sensX = -sensitivity * deltaX;
+		const up = vec3.fromValues(0, 1, 0);
+		vec3.transformQuat(up, up, cameraRotation);
+		vec3.multiply(up, up, vec3.fromValues(sensY, sensY, sensY));
+		
+		vec3.add(camera["orbitCenter"], up, camera["orbitCenter"]);
 
-			var right = vec3.fromValues(1, 0, 0);
-			vec3.transformQuat(right, right, cameraRotation);
-			vec3.multiply(right, right, vec3.fromValues(sensX, sensX, sensX));
+		//Update right direction
+		const sensX = -sensitivity * deltaX;
 
-			vec3.add(camera["orbitCenter"], right, camera["orbitCenter"]);
-		} else {
-			const sensitivity = camera["orbitLookSensitivity"];
-	
-			camera["yaw"] = (camera["yaw"] - sensitivity * deltaX) % 360.0;
-			camera["pitch"] = (camera["pitch"] - sensitivity * deltaY) % 360.0;
-		}
+		const right = vec3.fromValues(1, 0, 0);
+		vec3.transformQuat(right, right, cameraRotation);
+		vec3.multiply(right, right, vec3.fromValues(sensX, sensX, sensX));
+
+		vec3.add(camera["orbitCenter"], right, camera["orbitCenter"]);
 	}
 }
 
@@ -563,11 +556,12 @@ function processMouseButton(event, context, isdown) {
 	switch (event.button) {
 	case 0:
 		if (isdown) doMousePick(context);
-
-		context["input"]["leftButtonPressed"] = isdown;
 		break;
 	case 1:
-		context["input"]["middleButtonPressed"] = isdown;
+		context["input"]["panButtonPressed"] = isdown;
+		break;
+	case 2:
+		context["input"]["orbitButtonPressed"] = isdown;
 		break;
 	}
 
