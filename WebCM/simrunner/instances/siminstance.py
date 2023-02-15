@@ -3,8 +3,6 @@ import traceback
 import json
 import sys, os
 
-from pathlib import Path
-
 from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
@@ -32,7 +30,7 @@ class SimulationInstance:
 	def __init__(self, uuid, version, root_path):
 		self.uuid = uuid
 		self.backend_version = version
-		self.root_path = root_path
+		self.root_path = os.path.abspath(root_path)
 		self.is_alive = True
 	
 	def __del__(self):
@@ -148,7 +146,7 @@ def instance_control_thread(pipe, instance_params):
 	log_stream = open(log_file_path, "w")
 	sys.stdout = log_stream
 	sys.stderr = log_stream
-	
+
 	running = True
 	needs_reload = False
 
@@ -176,6 +174,12 @@ def instance_control_thread(pipe, instance_params):
 
 	def send_message_to_control(message):
 		endpoint.send_item(json.dumps(message))
+
+	print(f"Root directory: {instance_params.root_dir}")
+	print(f"Initial CWD: {os.getcwd()}")
+
+	os.chdir(instance_params.root_dir)
+	print(f"CWD changed to: {os.getcwd()}")
 
 	# This is more of a "sanity try-catch". It is here to make sure that
 	# if any exceptions occur, we still properly clean up the simulation instance
