@@ -241,3 +241,19 @@ label[for="snap-to-last"] {
 	-ms-user-select: none;
 	user-select: none;
 }
+
+.grey-button {
+	background-color: #E9E9ED;
+	border: solid 1px #8F8F9D;
+	padding: 2px 5px;
+}
+
+.grey-button:hover {
+	background-color: #D0D0D7;
+	border-color: #797987;
+}
+
+.grey-button:active {
+	background-color: #B1B1B9;
+	border-color: #565660;
+}
