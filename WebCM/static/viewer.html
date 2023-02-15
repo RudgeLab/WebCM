@@ -24,7 +24,7 @@
 						</div>
 						<ul id="timeline-controls">
 							<li>
-								<div id="status-container" class="center-children item-background"><p id="status-label">Status: Offline</p></div>
+								<div id="flex-row" class="center-children item-background"><p id="status-label">Status: Offline</p></div>
 							</li>
 							<li class="item-background">
 								<div class="center-children"><p id="sim-name" class="center-children">Name: No Simulation</p></div>
@@ -51,9 +51,6 @@
 					<tbody class="details-keyvalue-table">
 						<tr><td>Time</td><td id="simdets-time">0</td></tr>
 						<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
-						<tr><td>Thin outlines</td><td>
-							<input type="checkbox" id="thin-cell-outlines">
-						</td></tr>
 					</tbody>
 					<tbody id="cell-details-header">
 						<tr><td colspan="2">
@@ -66,20 +63,44 @@
 				</table>
 			</div>
 			<div id="button-container" class="item-background">
-				<button id="source-btn" class="grey-button">Edit source</button>
-				<button id="reload-btn" class="grey-button">Reload</button>
-				<button id="stop-btn" class="grey-button">Stop</button>
+				<div style="display:flex;flex-direction:column;">
+					<button id="settings-btn" class="grey-button">Settings</button>
+					<button id="source-btn" class="grey-button">Edit source</button>
+				</div>
+				<div style="display:flex;flex-direction:row;">
+					<button id="reload-btn" class="grey-button" style="flex:1;">Reload</button>
+					<button id="stop-btn" class="grey-button" style="flex:0.7;">Stop</button>
+				</div>
 			</div>
-			<div id="message-log-container" class="item-background">
-				<div>
-					<div id="message-log-header">
+			<div id="message-log-container" class="item-background overlay-window-centered">
+				<div class="overlay-window-backbone">
+					<div class="overlay-window-header">
 						<p id="message-log-title">Initialization Log</p>
-						<p id="message-log-close">[x]</p>
+						<p id="message-log-close" class="cursor-pointer">[x]</p>
 					</div>
 					<textarea id="message-log-text" readonly></textarea>
 				</div>
 			</div>
-			
+			<div id="settings-container" class="item-background overlay-window-centered">
+				<div class="overlay-window-backbone">
+					<div class="overlay-window-header">
+						<div class="details-header" style="flex:1"><span></span><span>Settings window</span><span></span></div>
+						<p id="settings-close" class="cursor-pointer">[x]</p>
+					</div>
+					<div id="settings-inputs-box">
+						<table>
+							<tbody class="details-keyvalue-table">
+								<tr><td>Thin outlines</td><td>
+									<input type="checkbox" id="thin-cell-outlines">
+								</td></tr>
+								<tr><td>Signal grid density</td><td>
+									<input type="number" id="signal-density-input" min="0" value="1" step="0.1">
+								</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </body>

@@ -22,7 +22,7 @@ function openInitLogWindow(context, title) {
 	document.getElementById("message-log-title").innerText = title;
 	document.getElementById("message-log-container").style.display = "inline";
 
-	context["isLogWindowOpen"] = true;
+	context["isOverlayWindowOpen"] = true;
 }
 
 function closeInitLogWindow(context, clear) {
@@ -32,7 +32,7 @@ function closeInitLogWindow(context, clear) {
 		document.getElementById("message-log-text").value = "";
 	}
 
-	context["isLogWindowOpen"] = false;
+	context["isOverlayWindowOpen"] = false;
 }
 
 function appendInitLogMessage(message) {
@@ -50,7 +50,7 @@ async function requestShapes(context, uuid) {
 	const data = await fetch(`/api/shapelist?uuid=${uuid}`);
 	const buffer = await data.json();
 
-	context["shapeList"] = buffer;
+	context["renderSettings"]["shapeList"] = buffer;
 }
 
 async function requestFrame(context, uuid, index) {
@@ -182,6 +182,13 @@ function connectToServer(context) {
 
 		context["commsSocket"] = commsSocket;
 	});
+}
+
+function showSettings(context) {
+	const container = document.getElementById("settings-container");
+	container.style.display = "inline";
+
+	document.getElementById("settings-close").onclick = (e) => { container.style.display = "none"; };
 }
 
 function reloadSimulation(context) {
@@ -370,10 +377,10 @@ async function initFrame(gl, context) {
 	setStatusMessage("Initializing");
 
 	context["selectedCellIndex"] = -1;
-	context["useThinOutlines"] = false;
 	context["currentFrameIndex"] = 0;
 	context["frameRequestIndex_Received"] = 0;
 	context["frameRequestIndex_Latest"] = 0;
+	context["isOverlayWindowOpen"] = false;
 
 	//Initialize camera details
 	context["camera"] = {
@@ -415,13 +422,15 @@ async function initFrame(gl, context) {
 		"frameCount": 0
 	};
 
-	//Initialize shape list
-	context["shapeList"] = [];
-
-	//Initialize depth peeling
-	context["depthPeeling"] = {
-		"layerCount": 5,
-		"depthCompareBias": 0.000001
+	//Initialize render settings
+	context["renderSettings"] = {
+		"shapeList": [],
+		"depthPeeling": {
+			"layerCount": 5,
+			"depthCompareBias": 0.000001,
+		},
+		"thinOutlines": false,
+		"signalVolumeDensity": 1.0,
 	};
 
 	//Initialize timeline slider 
@@ -444,11 +453,15 @@ async function initFrame(gl, context) {
 
 	let tempButton = null;
 	document.getElementById("source-btn").onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
+	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { showSettings(context); };
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
 	
-	document.getElementById("thin-cell-outlines").onchange = function(event) { context["useThinOutlines"] = this.checked; };
+	document.getElementById("thin-cell-outlines").onchange = function(event) { context["renderSettings"]["thinOutlines"] = this.checked; };
+	document.getElementById("signal-density-input").onchange = function(event) { context["renderSettings"]["signalVolumeDensity"] = this.value; };
 	
+	document.getElementById("signal-density-input").value = context["renderSettings"]["signalVolumeDensity"];
+
 	//Initialize the renderer
 	await render.init(gl, context);
 	await connectToSimulation(context, uuid);
@@ -514,7 +527,7 @@ function processMouseMove(event, context) {
 	input["lastMouseY"] = mouseY;
 
 	//Do not process input if the log window is open
-	if (context["isLogWindowOpen"]) return;
+	if (context["isOverlayWindowOpen"]) return;
 
 	//Move orbit
 	const camera = context["camera"];

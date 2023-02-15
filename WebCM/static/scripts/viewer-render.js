@@ -654,7 +654,7 @@ function drawScene(gl, context) {
 	//Draw cells
 	const cellShader = context["cellShader"];
 	const bacteriumMesh = context["bacteriumMesh"];
-	const withThinOutline = context["useThinOutlines"] ? 1 : 0;
+	const withThinOutline = context["renderSettings"]["thinOutlines"] ? 1 : 0;
 
 	gl.useProgram(cellShader["program"]);
 	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
@@ -670,7 +670,7 @@ function drawScene(gl, context) {
 
 function drawShapes(gl, context, shader) {
 	const sphereMesh = context["sphereMesh"];
-	const shapeList = context["shapeList"];
+	const shapeList = context["renderSettings"]["shapeList"];
 
 	for (let i = 0; i < shapeList.length; i++) {
 		const shape = shapeList[i];
@@ -742,8 +742,10 @@ export function drawFrame(gl, context, delta) {
 	const shapeShader = context["shapeShader"];
 	const composeShader = context["composeShader"];
 	const composeVolumeShader = context["composeVolumetricShader"];
-	
-	const layerCount = Math.max(1, context["depthPeeling"]["layerCount"]);
+	const depthPeelingSettings = context["renderSettings"]["depthPeeling"];
+
+	const layerCount = Math.max(1, depthPeelingSettings["layerCount"]);
+	const volumeDensityMultiplier = 0.18 * context["renderSettings"]["signalVolumeDensity"];
 	
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
@@ -799,7 +801,7 @@ export function drawFrame(gl, context, delta) {
 	gl.useProgram(shapeShader["program"]);
 	gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
 	gl.uniformMatrix4fv(shapeShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
-	gl.uniform1f(shapeShader["uniforms"]["u_DepthCompareBias"], context["depthPeeling"]["depthCompareBias"]);
+	gl.uniform1f(shapeShader["uniforms"]["u_DepthCompareBias"], depthPeelingSettings["depthCompareBias"]);
 
 	for (let i = 0; i < layerCount; i++) {
 		const currentTransparentDepth = (i & 1) ? context["transparent"]["depthTexture1"] : context["transparent"]["depthTexture0"];
@@ -842,12 +844,12 @@ export function drawFrame(gl, context, delta) {
 			gl.uniformMatrix4fv(shaderUniforms["u_ProjectionMatrix"], false, projMatrix);
 			gl.uniformMatrix4fv(shaderUniforms["u_ViewMatrix"], false, viewMatrix);
 			gl.uniform2i(shaderUniforms["u_ScreenSize"], viewWidth, viewHeight);
-			gl.uniform1f(shaderUniforms["u_DepthCompareBias"], context["depthPeeling"]["depthCompareBias"]);
+			gl.uniform1f(shaderUniforms["u_DepthCompareBias"], depthPeelingSettings["depthCompareBias"]);
 
 			gl.uniform3f(shaderUniforms["u_VolumeOrigin"], volOrigin[0], volOrigin[1], volOrigin[2]);
 			gl.uniform3f(shaderUniforms["u_VolumeCellSize"], volCellSize[0], volCellSize[1], volCellSize[2]);
 			gl.uniform3i(shaderUniforms["u_VolumeCellCount"], volCellCount[0], volCellCount[1], volCellCount[2]);
-			gl.uniform1f(shaderUniforms["u_VolumeOpacityMultiplier"], 0.18);
+			gl.uniform1f(shaderUniforms["u_VolumeOpacityMultiplier"], volumeDensityMultiplier);
 
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);

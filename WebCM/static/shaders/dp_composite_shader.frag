@@ -88,7 +88,7 @@ vec4 traceVolume(vec3 rayOrigin, vec3 rayDir, float rayTMin, float rayTMax) {
 
 		/* Core loop body */
 		vec4 voxelColor = texture(u_VolumeTexture, (vec3(curVoxel) + 0.5) / vec3(voxelCount));
-		voxelColor.a *= u_VolumeOpacityMultiplier;
+		voxelColor.a = clamp(voxelColor.a * u_VolumeOpacityMultiplier, 0.0, 1.0);
 
 		absorbedColor.xyz += voxelColor.xyz * voxelColor.a * absorbedColor.a;
 		absorbedColor.a *= (1.0 - voxelColor.a);

@@ -90,41 +90,27 @@ html, body {
 #timeline-controls li:nth-child(2) { grid-column-start: 2; }
 #timeline-controls li:nth-child(3) { margin-left: auto; }
 
-#status-container {
-	display: flex;
-	flex-direction: row;
-}
-
 #button-container {
 	position: fixed;
+	width: 8rem;
 	bottom: 0;
 	left: 0;
-	padding: 0.5rem;
-}
 
-#message-log-container {
-	width: 30rem;
-	height: 32rem;
-	
 	padding: 0.3rem;
+}
 
+.cursor-pointer {
+	cursor: pointer;
+}
+
+.overlay-window-centered {
 	position: fixed;
-    top: 50%;
-    left: 50%;
+	top: 50%;
+	left: 50%;
 	transform: translate(-50%, -50%);
-	
-	display: none;
 }
 
-#message-log-container > div {
-	width: 100%;
-	height: 100%;
-
-	display: flex;
-	flex-direction: column;
-}
-
-#message-log-header {
+.overlay-window-header {
 	display: flex;
 	flex-direction: row;
 	justify-content: space-between;
@@ -133,8 +119,27 @@ html, body {
 	margin-bottom: 0.3rem;
 }
 
-#message-log-close {
-	cursor: pointer;
+.overlay-window-backbone {
+	width: 100%;
+	height: 100%;
+
+	display: flex;
+	flex-direction: column;
+}
+
+.flex-row {
+	display: flex;
+	flex-direction: row;
+}
+
+/****** Message log ******/
+#message-log-container {
+	width: 30rem;
+	height: 32rem;
+	
+	padding: 0.3rem;
+	
+	display: none;
 }
 
 #message-log-text {
@@ -152,6 +157,32 @@ html, body {
 
 	background-color: rgb(149, 149, 149);
 	color: white;
+}
+
+/****** Settings window ******/
+#settings-container {
+	width: 25rem;
+
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	
+	display: none;
+}
+
+#settings-inputs-box {
+	flex: 1;
+	margin: 0.3rem;
+	margin-top: 0.2rem;
+}
+
+#settings-inputs-box table tbody tr td:nth-child(2) {
+	text-align: center;
+}
+
+#signal-density-input {
+	width: 5rem;
 }
 
 #viewer-details {
@@ -205,6 +236,10 @@ label[for="snap-to-last"] {
 	padding: 0 0.2rem 0 0;
 }
 
+input[type="checkbox"] {
+	margin: 0;
+}
+
 .item-background {
 	background-color: rgba(0, 0, 0, 0.5);
 	color: white;
@@ -246,6 +281,7 @@ label[for="snap-to-last"] {
 	background-color: #E9E9ED;
 	border: solid 1px #8F8F9D;
 	padding: 2px 5px;
+	margin: 2px;
 }
 
 .grey-button:hover {
