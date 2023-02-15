@@ -17,12 +17,29 @@ function setButtonContainerDisplay(display) {
 	document.getElementById("button-container").style.display = display;
 }
 
+function showSettings(context) {
+	document.getElementById("settings-container").style.display = "inline";
+
+	context["isSettingsWindowOpen"] = true;
+}
+
+function closeSettings(context) {
+	document.getElementById("settings-container").style.display = "none";
+
+	context["isSettingsWindowOpen"] = false;
+}
+
+function toggleSettings(context) {
+	if (context["isSettingsWindowOpen"]) closeSettings(context);
+	else showSettings(context);
+}
+
 /****** Init log ******/
 function openInitLogWindow(context, title) {
 	document.getElementById("message-log-title").innerText = title;
 	document.getElementById("message-log-container").style.display = "inline";
 
-	context["isOverlayWindowOpen"] = true;
+	context["isMessageLogOpen"] = true;
 }
 
 function closeInitLogWindow(context, clear) {
@@ -32,7 +49,7 @@ function closeInitLogWindow(context, clear) {
 		document.getElementById("message-log-text").value = "";
 	}
 
-	context["isOverlayWindowOpen"] = false;
+	context["isMessageLogOpen"] = false;
 }
 
 function appendInitLogMessage(message) {
@@ -182,13 +199,6 @@ function connectToServer(context) {
 
 		context["commsSocket"] = commsSocket;
 	});
-}
-
-function showSettings(context) {
-	const container = document.getElementById("settings-container");
-	container.style.display = "inline";
-
-	document.getElementById("settings-close").onclick = (e) => { container.style.display = "none"; };
 }
 
 function reloadSimulation(context) {
@@ -380,7 +390,8 @@ async function initFrame(gl, context) {
 	context["currentFrameIndex"] = 0;
 	context["frameRequestIndex_Received"] = 0;
 	context["frameRequestIndex_Latest"] = 0;
-	context["isOverlayWindowOpen"] = false;
+	context["isMessageLogOpen"] = false;
+	context["isSettingsWindowOpen"] = false;
 
 	//Initialize camera details
 	context["camera"] = {
@@ -453,14 +464,16 @@ async function initFrame(gl, context) {
 
 	let tempButton = null;
 	document.getElementById("source-btn").onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
-	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { showSettings(context); };
+	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(context); };
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
 	
 	document.getElementById("thin-cell-outlines").onchange = function(event) { context["renderSettings"]["thinOutlines"] = this.checked; };
 	document.getElementById("signal-density-input").onchange = function(event) { context["renderSettings"]["signalVolumeDensity"] = this.value; };
+	document.getElementById("depth-peel-layers-input").onchange = function(event) { context["renderSettings"]["depthPeeling"]["layerCount"] = Math.max(Math.min(this.value, 64), 1); };
 	
-	document.getElementById("signal-density-input").value = context["renderSettings"]["signalVolumeDensity"];
+	context["renderSettings"]["signalVolumeDensity"] = document.getElementById("signal-density-input").value;
+	context["renderSettings"]["depthPeeling"]["layerCount"] = document.getElementById("depth-peel-layers-input").value;
 
 	//Initialize the renderer
 	await render.init(gl, context);
@@ -527,7 +540,7 @@ function processMouseMove(event, context) {
 	input["lastMouseY"] = mouseY;
 
 	//Do not process input if the log window is open
-	if (context["isOverlayWindowOpen"]) return;
+	if (context["isMessageLogOpen"]) return;
 
 	//Move orbit
 	const camera = context["camera"];
@@ -675,9 +688,9 @@ async function main() {
 	canvas.addEventListener("wheel", e => processMouseWheel(e, context));
 	canvas.addEventListener("contextmenu", e => { e.preventDefault() });
 
-	//Create initialization log
-	const logCloseButton = document.getElementById("message-log-close");
-	logCloseButton.onclick = () => closeInitLogWindow(context, false);
+	//Initialize elements
+	document.getElementById("message-log-close").onclick = () => closeInitLogWindow(context, false);
+	document.getElementById("settings-close").onclick = () => closeSettings(context);
 
 	//Initialize render loop
 	var lastTime = 0;

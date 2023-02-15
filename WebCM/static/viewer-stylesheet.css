@@ -181,7 +181,7 @@ html, body {
 	text-align: center;
 }
 
-#signal-density-input {
+#settings-inputs-box table tbody tr td:nth-child(2) input[type="number"] {
 	width: 5rem;
 }
 
@@ -229,6 +229,11 @@ html, body {
 
 #cell-details-section {
 	display: none;
+}
+
+#snap-to-last {
+	margin: 3px;
+	margin-left: 4px;
 }
 
 label[for="snap-to-last"] {
