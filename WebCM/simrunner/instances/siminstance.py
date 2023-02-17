@@ -191,7 +191,7 @@ def instance_control_thread(pipe, instance_params):
 		
 		index_path = os.path.join(params.sim_root_dir, "index.json")
 
-		while running:
+		while True:
 			# Read source file
 			with open(instance_params.source_path, "rt") as srcfile:
 				params.source = srcfile.read()
@@ -235,11 +235,16 @@ def instance_control_thread(pipe, instance_params):
 
 			# Handle simulation reload
 			if needs_reload:
+				needs_reload = False
+
 				index_data = archiver.write_empty_index_file(index_path, instance_params.backend)
 
 				send_message_to_control({ "newframe": { "frame_count": 0, "new_data": index_data } })
-			
-			needs_reload = False	
+
+				continue
+
+			# If the simulation ends by itself (i.e. it finishes), we don't want to keep running the instance
+			break
 
 		endpoint.shutdown()
 	except Exception as e:

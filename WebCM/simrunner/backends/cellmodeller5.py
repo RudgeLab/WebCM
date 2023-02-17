@@ -20,7 +20,8 @@ class CellModeller5Backend(SimulationBackend):
 	def step(self):
 		self.simulator.step()
 
-		time.sleep(0.12)
+		# The simulator is too fast without this. It will be removed when (and if) we complete CM5
+		time.sleep(0.1)
 
 	def write_step_files(self):
 		base_file_name = "step-%05i" % self.simulator.get_step_index()
