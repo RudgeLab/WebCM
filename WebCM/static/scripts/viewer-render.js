@@ -530,31 +530,36 @@ function createTextureAttachment(gl, width, height, internalFormat, format, type
 
 function recreateOpaqueFBO(gl, context) {
 	if (context["opaque"] != null) {
-		gl.deleteTexture(context["opaque"]["opaqueColor"]);
-		gl.deleteTexture(context["opaque"]["opaqueDepth"]);
+		gl.deleteRenderbuffer(context["opaque"]["colorTexture"]);
+		gl.deleteRenderbuffer(context["opaque"]["depthTexture"]);
 		gl.deleteFramebuffer(context["opaque"]["fbo"]);
 	}
 
-	const width = gl.canvas.width;
-	const height = gl.canvas.height;
+	const sampleCount = Math.min(gl.getParameter(gl.MAX_SAMPLES), 8);
 
-	const colorTexture = createTextureAttachment(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
-	const depthTexture = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
+	const renderBuffer = gl.createRenderbuffer();
+	const depthBuffer = gl.createRenderbuffer();
 
-	const framebuffer = gl.createFramebuffer();
+	gl.bindRenderbuffer(gl.RENDERBUFFER, renderBuffer);
+	gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.RGBA8, gl.canvas.width, gl.canvas.height);
 
-	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
-	
+	gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
+	gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.DEPTH_COMPONENT32F, gl.canvas.width, gl.canvas.height);
+
+	const renderTargetFBO = gl.createFramebuffer();
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, renderTargetFBO);
+	gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderBuffer);
+	gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer);
+
 	gl.drawBuffers([ gl.COLOR_ATTACHMENT0 ]);
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-	
+
 	context["opaque"] = {
-		"colorTexture": colorTexture,
-		"depthTexture": depthTexture,
-		"fbo": framebuffer
+		"colorTexture": renderBuffer,
+		"depthTexture": depthBuffer,
+		"fbo": renderTargetFBO,
 	};
 }
 
@@ -722,13 +727,13 @@ function drawFullscreenQuad(gl, context, ignoreDepth=true, blending=true) {
 	if (blending) gl.disable(gl.BLEND);
 }
 
-function blitFBO(gl, read, draw, width, height, clearFlags) {
+function blitFBO(gl, read, draw, width, height, clearFlags, filter=gl.NEAREST) {
 	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
 	gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
 
 	gl.blitFramebuffer(0, 0, width, height,
 					   0, 0, width, height,
-					   clearFlags, gl.NEAREST);
+					   clearFlags, filter);
 }
 
 export function drawFrame(gl, context, delta) {
@@ -745,7 +750,7 @@ export function drawFrame(gl, context, delta) {
 	const depthPeelingSettings = context["renderSettings"]["depthPeeling"];
 
 	const layerCount = Math.max(1, depthPeelingSettings["layerCount"]);
-	const volumeDensityMultiplier = 0.18 * context["renderSettings"]["signalVolumeDensity"];
+	const volumeDensityMultiplier = Math.max(0, 0.18 * context["renderSettings"]["signalVolumeDensity"]);
 	
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
@@ -878,21 +883,25 @@ export function drawFrame(gl, context, delta) {
 		//Copy the depth from the "peel" FBO to the "transparent" FBO.
 		blitFBO(gl, peelFBO, transparentFBO, viewWidth, viewHeight, gl.DEPTH_BUFFER_BIT);
 
-		//We don't HAVE to unbind the texture, but the WebGL debug layers get confused and think we are 
-		//reading from the texture while also drawing to it and print a warning message.
+		//We don't HAVE to unbind the texture, but the WebGL debug layers gets confused and thinks we are 
+		//reading from the texture while also drawing to it and prints a warning message.
 		gl.bindTexture(gl.TEXTURE_2D, null);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	}
+
+	//Because oqaue FBO is multisampled, we need to resolve it first before sampling it in the final
+	//composite. Peel FBO is the only FBO that won't be used later, so we can use that
+	blitFBO(gl, opaqueFBO, peelFBO, viewWidth, viewHeight, gl.COLOR_BUFFER_BIT, gl.LINEAR);
 
 	/* Composite the opaque layer under the transparent layer */
 	gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
 
 	gl.useProgram(composeShader["program"]);
 	gl.activeTexture(gl.TEXTURE0);
-	gl.bindTexture(gl.TEXTURE_2D, context["opaque"]["colorTexture"]);
+	gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);
 	gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
 
-	drawFullscreenQuad(gl, context, "opaque");
+	drawFullscreenQuad(gl, context);
 
 	/////////////////////////////////////////////////
 	// Copy the final result to the screen
