@@ -60,10 +60,6 @@ After you've installed PyOpenCL, you can install CellModeller.
 
 Start by cloning the repository at [https://github.com/RudgeLab/CellModeller](https://github.com/RudgeLab/CellModeller). Then, navigate to the new directory and just run `python ./setup.py install`.  
 
-
-## User Documentation
+# User Documentation
 
 Please refer to the [USERDOCS.md](./Documentation/USERDOCS.md) file for user documentation.
-
-
-
