@@ -130,6 +130,14 @@ class SimulationInstance:
 	def is_closed(self):
 		return not self.is_alive
 
+def create_instance_from_name(backend_name, params):
+	if backend_name == "CellModeller5":
+		return CellModeller5Backend(params)
+	elif backend_name == "CellModeller4":
+		return CellModeller4Backend(params)
+	
+	raise Exception(f"Backend type '{backend_name}' is not supported")
+
 # This is what actually runs the simulation
 # !!! It runs in a child process !!!
 def instance_control_thread(pipe, instance_params):
@@ -197,12 +205,7 @@ def instance_control_thread(pipe, instance_params):
 				params.source = srcfile.read()
 
 			# Create backend
-			if instance_params.backend == "CellModeller5":
-				backend = CellModeller5Backend(params)
-			else:
-				backend = CellModeller4Backend(params)
-
-			# Run the backend
+			backend = create_instance_from_name(instance_params.backend, params)
 			backend.initialize()
 
 			# Write shapes
