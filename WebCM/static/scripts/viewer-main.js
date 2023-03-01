@@ -437,10 +437,12 @@ async function initFrame(gl, context) {
 	context["renderSettings"] = {
 		"shapeList": [],
 		"depthPeeling": {
+			"enabled": true,
 			"layerCount": 5,
 			"depthCompareBias": 0.000001,
 		},
 		"thinOutlines": false,
+		"signalVolumeEnabled": true,
 		"signalVolumeDensity": 1.0,
 	};
 
@@ -471,9 +473,13 @@ async function initFrame(gl, context) {
 	document.getElementById("thin-cell-outlines").onchange = function(event) { context["renderSettings"]["thinOutlines"] = this.checked; };
 	document.getElementById("signal-density-input").onchange = function(event) { context["renderSettings"]["signalVolumeDensity"] = this.value; };
 	document.getElementById("depth-peel-layers-input").onchange = function(event) { context["renderSettings"]["depthPeeling"]["layerCount"] = Math.max(Math.min(this.value, 64), 1); };
+	document.getElementById("signals-enabled-input").onchange = function(event) { context["renderSettings"]["signalVolumeEnabled"] = this.checked; };
+	document.getElementById("transparency-enabled-input").onchange = function(event) { context["renderSettings"]["depthPeeling"]["enabled"] = this.checked; };
 	
 	context["renderSettings"]["signalVolumeDensity"] = document.getElementById("signal-density-input").value;
 	context["renderSettings"]["depthPeeling"]["layerCount"] = document.getElementById("depth-peel-layers-input").value;
+	context["renderSettings"]["signalVolumeEnabled"] = document.getElementById("signals-enabled-input").checked;
+	context["renderSettings"]["depthPeeling"]["enabled"] = document.getElementById("transparency-enabled-input").checked;
 
 	//Initialize the renderer
 	await render.init(gl, context);

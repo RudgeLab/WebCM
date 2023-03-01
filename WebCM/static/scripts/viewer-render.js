@@ -530,35 +530,30 @@ function createTextureAttachment(gl, width, height, internalFormat, format, type
 
 function recreateOpaqueFBO(gl, context) {
 	if (context["opaque"] != null) {
-		gl.deleteRenderbuffer(context["opaque"]["colorTexture"]);
-		gl.deleteRenderbuffer(context["opaque"]["depthTexture"]);
+		gl.deleteTexture(context["opaque"]["colorTexture"]);
+		gl.deleteTexture(context["opaque"]["depthTexture"]);
 		gl.deleteFramebuffer(context["opaque"]["fbo"]);
 	}
 
-	const sampleCount = Math.min(gl.getParameter(gl.MAX_SAMPLES), 8);
+	const width = gl.canvas.width;
+	const height = gl.canvas.height;
 
-	const renderBuffer = gl.createRenderbuffer();
-	const depthBuffer = gl.createRenderbuffer();
-
-	gl.bindRenderbuffer(gl.RENDERBUFFER, renderBuffer);
-	gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.RGBA8, gl.canvas.width, gl.canvas.height);
-
-	gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
-	gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sampleCount, gl.DEPTH_COMPONENT32F, gl.canvas.width, gl.canvas.height);
+	const colorTexture = createTextureAttachment(gl, width, height, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+	const depthTexture = createTextureAttachment(gl, width, height, gl.DEPTH_COMPONENT32F, gl.DEPTH_COMPONENT, gl.FLOAT);
 
 	const renderTargetFBO = gl.createFramebuffer();
 
 	gl.bindFramebuffer(gl.FRAMEBUFFER, renderTargetFBO);
-	gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderBuffer);
-	gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
 
 	gl.drawBuffers([ gl.COLOR_ATTACHMENT0 ]);
 	
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 	context["opaque"] = {
-		"colorTexture": renderBuffer,
-		"depthTexture": depthBuffer,
+		"colorTexture": colorTexture,
+		"depthTexture": depthTexture,
 		"fbo": renderTargetFBO,
 	};
 }
@@ -749,7 +744,9 @@ export function drawFrame(gl, context, delta) {
 	const composeVolumeShader = context["composeVolumetricShader"];
 	const depthPeelingSettings = context["renderSettings"]["depthPeeling"];
 
-	const layerCount = Math.max(1, depthPeelingSettings["layerCount"]);
+	const signalsVolumeEnabled = context["renderSettings"]["signalVolumeEnabled"];
+
+	const layerCount = depthPeelingSettings["enabled"] ? Math.max(1, depthPeelingSettings["layerCount"]) : 1;
 	const volumeDensityMultiplier = Math.max(0, 0.18 * context["renderSettings"]["signalVolumeDensity"]);
 	
 	const camera = context["camera"];
@@ -836,7 +833,7 @@ export function drawFrame(gl, context, delta) {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, currentTransparentDepth, 0);
 
-		if (context["colorVolume"]["enabled"]) {
+		if (context["colorVolume"]["enabled"] && signalsVolumeEnabled) {
 			const shaderUniforms = composeVolumeShader["uniforms"];
 
 			const volOrigin = context["colorVolume"]["origin"];
