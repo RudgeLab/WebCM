@@ -65,6 +65,11 @@ function appendInitLogMessage(message) {
 
 async function requestShapes(context, uuid) {
 	const data = await fetch(`/api/shapelist?uuid=${uuid}`);
+	if (!data.ok) {
+		console.error(`Error when shape list ${data.status} - ${data.statusText}`);
+		return;
+	}
+
 	const buffer = await data.json();
 
 	context["renderSettings"]["shapeList"] = buffer;
@@ -76,6 +81,11 @@ async function requestFrame(context, uuid, index) {
 	const frameRequestIndex = context["frameRequestIndex_Latest"]++;
 	
 	const frameData = await fetch(`/api/framedata?index=${index}&uuid=${uuid}`);
+	if (!frameData.ok) {
+		console.error(`Error when requesting frame ${index}: ${frameData.status} - ${frameData.statusText}`);
+		return;
+	}
+
 	const frameBuffer = await frameData.arrayBuffer();
 
 	if (frameRequestIndex < context["frameRequestIndex_Received"]) {
@@ -254,21 +264,31 @@ async function updateCellInfo(context) {
 		const cellId = context["selectedCellIdentifier"];
 
 		const cellData = await fetch(`/api/cellinfoindex?cellid=${cellId}&frameindex=${frameIndex}&uuid=${simUUID}`);
-		const cellProps = await cellData.json();
 
-		let cellText = "";
+		if (cellData.ok) {
+			const cellProps = await cellData.json();
 
-		for (const key in cellProps) {
-			const value = cellProps[key];
-			const text = customFormat(value);
+			let cellText = "";
 
-			cellText += `<tr><td>${key}</td><td>${text}</td></tr>`;
+			for (const key in cellProps) {
+				const value = cellProps[key];
+				const text = customFormat(value);
+
+				cellText += `<tr><td>${key}</td><td>${text}</td></tr>`;
+			}
+
+			cellDetailsHeader.style.display = "table-row-group";
+			cellDetailsSection.style.display = "table-row-group";
+
+			cellDetailsSection.innerHTML = cellText;
+		} else {
+			console.error(`Error when cell info: ${cellData.status} - ${cellData.statusText}`);
+
+			cellDetailsHeader.style.display = "table-row-group";
+			cellDetailsSection.style.display = "table-row-group";
+
+			cellDetailsSection.innerHTML = `<td colspan="2" style="text-align: center;">Failed to fetch cell data</td>`;
 		}
-
-		cellDetailsHeader.style.display = "table-row-group";
-		cellDetailsSection.style.display = "table-row-group";
-
-		cellDetailsSection.innerHTML = cellText;
 	}
 }
 
