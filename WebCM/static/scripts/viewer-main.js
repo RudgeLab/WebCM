@@ -214,7 +214,11 @@ function stopSimulation(context) {
 }
 
 function processTimelineChange(value, context) {
-	requestFrame(context, context["simUUID"], value - 1);
+	//NOTE: When someone re-opens a closed tab, the web browser may send an oninput
+	//event. This might happen before "simUUID" has been set, so we end sending "undefined" as the UUID
+	if (context["simUUID"] != undefined) {
+		requestFrame(context, context["simUUID"], value - 1);
+	}
 }
 
 function customFormat(value) {
