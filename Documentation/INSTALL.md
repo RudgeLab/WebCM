@@ -1,3 +1,4 @@
+
 # Installation
 
 WebCM uses CellModeller to perform cellular simulations. You do not need CellModeller to run WebCM if you only want to view simulation, however, if you want to run them, you'll have to have CellModeller installed. This means that the installation of CellModeller is not done by default when installing WebCM and is left up to the user. 
@@ -28,13 +29,13 @@ This needs to be done AFTER the database has been created. If you then run the s
 
 WebCM doesn't have its own user management page, so if you want to add users you will have to do it through the admin page.
 
-### Running the server
+### Running the server locally
 
 To run the server, navigate to the server's root directory and run:
 
 	python ./manage.py runserver
 
-By default, this will start WebCM on `localhost:8000/`. This should **only** be used if you want to quickly launch WebCM for personal use. If you want to deploy WebCM (e.g. in a lab environment), follow the instructions in the *"Deploying WebCM"* section.
+By default, this will start WebCM on `localhost:8000/`. This should **only** be used if you want to quickly launch WebCM for personal use. If you want to deploy WebCM (e.g. in a lab environment), follow the instructions in the [Deploying WebCM](#deploying-webcm) section.
 
 ## Setting up CellModeller
 
