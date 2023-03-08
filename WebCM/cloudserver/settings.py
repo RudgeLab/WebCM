@@ -35,7 +35,6 @@ SITE_ID = 1
 # Application definition
 
 INSTALLED_APPS = [
-    'daphne',
     'cloudserver.apps.MainAppConfig',
     'saveviewer.apps.SaveViewerConfig',
     'simrunner.apps.SimRunnerConfig',

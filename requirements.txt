@@ -2,4 +2,4 @@ django
 channels
 msgpack
 numpy
-daphne
+uvicorn
