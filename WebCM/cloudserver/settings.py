@@ -35,6 +35,8 @@ SITE_ID = 1
 # Application definition
 
 INSTALLED_APPS = [
+    # NOTE: Do not remove daphne! It is needed to run channels. I don't know why!!!!!!!
+    'daphne',
     'cloudserver.apps.MainAppConfig',
     'saveviewer.apps.SaveViewerConfig',
     'simrunner.apps.SimRunnerConfig',
@@ -46,7 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels'
+    'channels',
 ]
 
 MIDDLEWARE = [

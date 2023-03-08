@@ -1,4 +1,5 @@
 django
+daphne
 channels
 msgpack
 numpy
