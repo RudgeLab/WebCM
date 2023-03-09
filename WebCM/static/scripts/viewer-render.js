@@ -453,9 +453,9 @@ export async function init(gl, context) {
 	
 		const composeFragmentData = await fetchOrThrow("/static/shaders/dp_composite_shader.frag");
 		const composeFragmentSource = await composeFragmentData.text();
-	
+
 		context["composeShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
-			"u_Texture"
+			"u_Texture", "u_FixAlphaToOne"
 		]);
 
 		context["composeVolumetricShader"] = createShader(gl, composeVertexSource, composeFragmentSource, [
@@ -770,7 +770,7 @@ export function drawFrame(gl, context, delta) {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 	drawScene(gl, context);
-
+	
 	/////////////////////////////////////////////////
 	// Render transparent objects
 	/////////////////////////////////////////////////
@@ -824,7 +824,7 @@ export function drawFrame(gl, context, delta) {
 		/* Draw transparent objects */
 		gl.bindFramebuffer(gl.FRAMEBUFFER, peelFBO);
 
-		gl.clearColor(0.0, 0.0, 0.0, 0.0);
+		gl.clearColor(1.0, 1.0, 0.0, 0.0);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		drawShapes(gl, context, shapeShader);
@@ -873,6 +873,7 @@ export function drawFrame(gl, context, delta) {
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);
 			gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
+			gl.uniform1i(composeShader["uniforms"]["u_FixAlphaToOne"], 0);
 		}
 
 		drawFullscreenQuad(gl, context);
@@ -889,24 +890,33 @@ export function drawFrame(gl, context, delta) {
 	//Because oqaue FBO is multisampled, we need to resolve it first before sampling it in the final
 	//composite. Peel FBO is the only FBO that won't be used later, so we can use that
 	blitFBO(gl, opaqueFBO, peelFBO, viewWidth, viewHeight, gl.COLOR_BUFFER_BIT, gl.LINEAR);
-
+	
 	/* Composite the opaque layer under the transparent layer */
 	gl.bindFramebuffer(gl.FRAMEBUFFER, transparentFBO);
-
+	
 	gl.useProgram(composeShader["program"]);
 	gl.activeTexture(gl.TEXTURE0);
 	gl.bindTexture(gl.TEXTURE_2D, context["peel"]["colorTexture"]);
 	gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
+	gl.uniform1i(composeShader["uniforms"]["u_FixAlphaToOne"], 0);
 
 	drawFullscreenQuad(gl, context);
 
 	/////////////////////////////////////////////////
 	// Copy the final result to the screen
 	/////////////////////////////////////////////////
-	gl.bindFramebuffer(gl.READ_FRAMEBUFFER, transparentFBO);
-	gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	gl.clearDepth(1.0);
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	
-	gl.blitFramebuffer(0, 0, viewWidth, viewHeight,
-					   0, 0, viewWidth, viewHeight,
-					   gl.COLOR_BUFFER_BIT, gl.NEAREST);
+	gl.useProgram(composeShader["program"]);
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, context["transparent"]["colorTexture"]);
+	gl.uniform1i(composeShader["uniforms"]["u_Texture"], 0);
+	gl.uniform1i(composeShader["uniforms"]["u_FixAlphaToOne"], 1);
+
+	//We don't want to do any blending on the shader's side because we are just
+	//"copying" the image to the screen, not compositing it
+	drawFullscreenQuad(gl, context, true, false);
 }

@@ -21,6 +21,7 @@ uniform float u_VolumeOpacityMultiplier;
 uniform ivec2 u_ScreenSize;
 #else
 uniform sampler2D u_Texture;
+uniform int u_FixAlphaToOne;
 #endif
 
 out vec4 out_Color;
@@ -180,6 +181,10 @@ void main() {
 #endif
 
 	vec4 finalColor = texelFetch(u_Texture, ivec2(gl_FragCoord.xy), 0);
+
+	if (u_FixAlphaToOne != 0)
+		finalColor.a = 1.0;
+	 
 	out_Color = vec4(finalColor.xyz * finalColor.a, finalColor.a);
 }
 
