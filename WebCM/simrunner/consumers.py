@@ -54,6 +54,9 @@ class UserCommsConsumer(WebsocketConsumer):
 				self.send_sim_header()
 
 		return
+	
+	def disconnect(self, close_code):
+		wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
 
 	def handle_reload_action(self):
 		if manager.is_simulation_running(self.sim_uuid):
