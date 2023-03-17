@@ -3,6 +3,7 @@ import traceback
 import json
 import sys, os
 
+from cloudserver import settings
 from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
@@ -132,6 +133,9 @@ class SimulationInstance:
 
 def create_instance_from_name(backend_name, params):
 	if backend_name == "CellModeller5":
+		if not settings.ENABLE_CELLMODELLER5:
+			raise Exception(f"CellModeller5 is not enabled. To enable CellModeller5, set ENABLE_CELLMODELLER5=True in cloudserver/settings.py")
+
 		return CellModeller5Backend(params)
 	elif backend_name == "CellModeller4":
 		return CellModeller4Backend(params)

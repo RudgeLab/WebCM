@@ -3,6 +3,7 @@ from django.template import RequestContext, Template
 
 from django.contrib.auth.decorators import login_required
 
+from cloudserver import settings
 from cloudserver.models import SimulationEntry, SourceContentEntry, lookup_simulation, lookup_source_content
 from saveviewer import archiver
 from saveviewer import format as sv_format
@@ -26,7 +27,7 @@ def home(request):
 	with open("static/index.html", "r") as index_file:
 		index_data = index_file.read()
 
-	context = RequestContext(request)
+	context = RequestContext(request, { "enable_cellmodeller5": settings.ENABLE_CELLMODELLER5 })
 	content = Template(index_data).render(context)
 
 	return HttpResponse(content)

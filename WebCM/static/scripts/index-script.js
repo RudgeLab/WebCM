@@ -87,19 +87,12 @@ async function submitCreateSimulationRequest() {
 	const simName = document.getElementById("input-create-name");
 	const sourceFileSelect = document.getElementById("select-simulation-src-file");
 
-/*	const isVersionCM4 = document.getElementById("input-radio-cm4");
-	const isVersionCM5 = document.getElementById("input-radio-cm5");
-
-	if (!isVersionCM4.checked && !isVersionCM5.checked) {
-		alert("Hmmm... neither CM4 nor CM5 is selected. This shouldn't happen!");
-		return;
-	}*/
-
 	if (markAsError("input-create-name", simName.value == "")) return;
 
-	const name = simName.value;
-	const version = "CellModeller4";
+	const radioBtnCM5 = document.getElementById("input-radio-cm5")
+	const version = (radioBtnCM5 && radioBtnCM5.checked) ? "CellModeller5" : "CellModeller4";
 
+	const name = simName.value;
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 
 	let source = "";

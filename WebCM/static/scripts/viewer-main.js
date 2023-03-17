@@ -213,9 +213,10 @@ function connectToServer(context) {
 
 function reloadSimulation(context) {
 	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
-
 		setStatusMessage("Reloading");
+		closeInitLogWindow(context, true);
+
+		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
 	}
 }
 
