@@ -31,6 +31,7 @@ class DuplexPipeEndpoint:
 
 		self.auto_shutdown = False
 		self.running = False
+		self.was_broken = False
 		self.thread = threading.Thread(target=self.run)
 		self.queue_cond = threading.Condition()
 
@@ -64,9 +65,8 @@ class DuplexPipeEndpoint:
 					self.connection.send(PipeEndpointSignal.CLOSE_CONFIRMATION)
 					self.running = False
 			except BrokenPipeError as e:
-				print(traceback.format_exc())
-				print("Shutting down pipe endpoint because of exception")
 				self.running = False
+				self.was_broken = True
 			except Exception as e:
 				print(traceback.format_exc())
 
@@ -110,8 +110,8 @@ class DuplexPipeEndpoint:
 		self.close()
 
 	def send_item(self, item):
-		if not self.running:
-			return
+		if self.was_broken: raise BrokenPipeError("The pipe has been ended")
+		if not self.running: return
 
 		with self.queue_cond:
 			self.msg_queue.put(item)

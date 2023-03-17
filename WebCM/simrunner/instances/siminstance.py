@@ -252,14 +252,17 @@ def instance_control_thread(pipe, instance_params):
 
 			# If the simulation ends by itself (i.e. it finishes), we don't want to keep running the instance
 			break
-
-		endpoint.shutdown()
+	except BrokenPipeError:
+		# This isn't really a regular error. It happens all the time because the server closes the pipe before
+		# the instance has a chance to quit. For now, we won't treat this as an errorand just print a message
+		print("IPC pipe was closed")
 	except Exception as e:
 		exc_message = traceback.format_exc()
 		print(exc_message)
 
 		send_message_to_control({ "error_message": str(exc_message) })
 		send_message_to_control({ "close": { "abrupt": True } })
+	finally:
 		endpoint.shutdown()
 
 	log_stream.close()
