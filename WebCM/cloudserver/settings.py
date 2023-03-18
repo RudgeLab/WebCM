@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-(r=sn9c$ri39&jsx0oi=lyqx+03+79saiiaw!m!w1-)2euzg%!
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ENABLE_CELLMODELLER5 = True
+ENABLE_CELLMODELLER5 = False
 
 ALLOWED_HOSTS = []
 

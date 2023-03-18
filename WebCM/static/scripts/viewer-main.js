@@ -52,7 +52,7 @@ function closeInitLogWindow(context, clear) {
 	context["isMessageLogOpen"] = false;
 }
 
-function appendInitLogMessage(message) {
+function writeInitLogMessage(message) {
 	var textArea = document.getElementById("message-log-text");
 
 	/*if (textArea.value.length > 0) {
@@ -174,7 +174,7 @@ function connectToServer(context) {
 
 				if (data.crashMessage) {
 					openInitLogWindow(context, "Crash error");
-					appendInitLogMessage(data.crashMessage);
+					writeInitLogMessage(data.crashMessage);
 				}
 			} else if (action === "newframe") {
 				const frameCount = data["frameCount"];
@@ -191,10 +191,10 @@ function connectToServer(context) {
 				await requestShapes(context, context["simUUID"]);
 			} else if (action === "infolog") {
 				openInitLogWindow(context, "Initialization Log");
-				appendInitLogMessage(data);
+				writeInitLogMessage(data);
 			} else if (action === "error_message") {
 				openInitLogWindow(context, "Error Log");
-				appendInitLogMessage(data);
+				writeInitLogMessage(data);
 
 				setStatusMessage("Fatal Error");
 			} else if (action === "closeinfolog") {
