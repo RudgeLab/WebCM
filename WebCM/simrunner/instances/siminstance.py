@@ -20,7 +20,12 @@ class _InstanceProcessParams:
 	source_path = ""
 	backend = ""
 
-def decode_json_message(message):
+# Encoding/decoding with JSON because its (probably) faster than the pickle-ing that
+# Pytohn's pipe (might) be doing
+def encode_pipe_message(message):
+	return json.dumps(message)
+
+def decode_pipe_message(message):
 	message_json = json.loads(message)
 	message_key = list(message_json)[0]
 	message_value = message_json[message_key]
@@ -70,7 +75,7 @@ class SimulationInstance:
 		self.endpoint.start()
 
 	def recv_message_from_instance(self, message):
-		(action, data) = decode_json_message(message)
+		(action, data) = decode_pipe_message(message)
 
 		if action == "newframe":
 			archiver.update_instance_index(self.uuid, data["new_data"])
@@ -81,12 +86,14 @@ class SimulationInstance:
 
 			self.send_message_to_clients(clientmessages.NewShape())
 		elif action == "error_message":
-			self.send_message_to_clients(clientmessages.ErrorMessage(data))
+			archiver.update_instance_index(self.uuid, data["new_data"])
+			
+			self.send_message_to_clients(clientmessages.ErrorMessage(data["new_data"]["crash_message"]))
 		elif action == "close":
 			self._cleanup()
 
 	def send_message_to_instance(self, message):
-		self.endpoint.send_item(json.dumps(message))
+		self.endpoint.send_item(encode_pipe_message(message))
 
 	# This is not needed. All messages coming from clients are handled by the WebSocket consumers
 	# def recv_message_from_clients(self, data):
@@ -172,7 +179,7 @@ def instance_control_thread(pipe, instance_params):
 		running = False
 
 	def recv_message_from_control(message):
-		(action, data) = decode_json_message(message)
+		(action, data) = decode_pipe_message(message)
 
 		if action == "stop":
 			nonlocal running
@@ -185,13 +192,15 @@ def instance_control_thread(pipe, instance_params):
 	endpoint.start()
 
 	def send_message_to_control(message):
-		endpoint.send_item(json.dumps(message))
+		endpoint.send_item(encode_pipe_message(message))
 
 	print(f"Root directory: {instance_params.root_dir}")
 	print(f"Initial CWD: {os.getcwd()}")
 
 	os.chdir(instance_params.root_dir)
 	print(f"CWD changed to: {os.getcwd()}")
+
+	index_path = "index.json"
 
 	# This is more of a "sanity try-catch". It is here to make sure that
 	# if any exceptions occur, we still properly clean up the simulation instance
@@ -260,7 +269,8 @@ def instance_control_thread(pipe, instance_params):
 		exc_message = traceback.format_exc()
 		print(exc_message)
 
-		send_message_to_control({ "error_message": str(exc_message) })
+		index_data = archiver.write_crash_to_sim_index(index_path, str(exc_message))
+		send_message_to_control({ "error_message": { "new_data": index_data } })
 		send_message_to_control({ "close": { "abrupt": True } })
 	finally:
 		endpoint.shutdown()

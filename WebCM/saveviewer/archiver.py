@@ -88,6 +88,8 @@ def write_empty_index_file(path, backend_version):
 		"num_frames": 0,
 		"backend_version": backend_version,
 		"shape_list": [],
+		"has_crashed": False,
+		"crash_message": ""
 	}
 
 	sim_data_str = json.dumps(init_index_data)
@@ -125,6 +127,15 @@ def write_entry_to_sim_index(index_path, step_file, viz_bin_file):
 		sim_data["num_frames"] = frame_count + 1
 
 		return (sim_data, frame_count)
+
+	return __update_sim_index(index_path, update_action)
+
+def write_crash_to_sim_index(index_path, message):
+	def update_action(sim_data):
+		sim_data["has_crashed"] = True
+		sim_data["crash_message"] = message
+
+		return sim_data
 
 	return __update_sim_index(index_path, update_action)
 

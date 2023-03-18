@@ -55,11 +55,11 @@ function closeInitLogWindow(context, clear) {
 function appendInitLogMessage(message) {
 	var textArea = document.getElementById("message-log-text");
 
-	if (textArea.value.length > 0) {
+	/*if (textArea.value.length > 0) {
 		textArea.value += "\n";
-	}
+	}*/
 
-	textArea.value += message;
+	textArea.value = message;
 	textArea.scrollTop = textArea.scrollHeight;
 }
 
@@ -160,7 +160,7 @@ function connectToServer(context) {
 				setSimFrame(0, data.frameCount);
 				setStatusMessage("Offline");
 				setSimName(data.name);
-				
+
 				await requestShapes(context, context["simUUID"]);
 
 				if (data.frameCount > 0) {
@@ -170,6 +170,11 @@ function connectToServer(context) {
 				if (data.isOnline) {
 					setButtonContainerDisplay("block");
 					setStatusMessage("Running");
+				}
+
+				if (data.crashMessage) {
+					openInitLogWindow(context, "Crash error");
+					appendInitLogMessage(data.crashMessage);
 				}
 			} else if (action === "newframe") {
 				const frameCount = data["frameCount"];
