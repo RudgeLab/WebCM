@@ -5,6 +5,7 @@ from saveviewer import format as svformat
 import io
 import os
 import struct
+import inspect
 
 import importlib
 
