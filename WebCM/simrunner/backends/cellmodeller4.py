@@ -9,10 +9,10 @@ import struct
 import importlib
 
 def pack_norm_color(red, green, blue, alpha=1.0):
-	color_r = int(255.0 * min(red, 1.0))
-	color_g = int(255.0 * min(green, 1.0))
-	color_b = int(255.0 * min(blue, 1.0))
-	color_a = int(255.0 * min(alpha, 1.0))
+	color_r = max(min(int(255.0 * red), 255), 0)
+	color_g = max(min(int(255.0 * green), 255), 0)
+	color_b = max(min(int(255.0 * blue), 255), 0)
+	color_a = max(min(int(255.0 * alpha), 255), 0)
 	return (color_a << 24) | (color_b << 16) | (color_g << 8) | color_r
 
 class CellModeller4Backend(SimulationBackend):
