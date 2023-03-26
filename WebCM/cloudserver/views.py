@@ -3,11 +3,12 @@ from django.template import RequestContext, Template
 
 from django.contrib.auth.decorators import login_required
 
-from cloudserver import settings
-from cloudserver.models import SimulationEntry, SourceContentEntry, lookup_simulation, lookup_source_content
+from cloudserver import settings, models
 from saveviewer import archiver
 from saveviewer import format as sv_format
 from simrunner.instances import manager
+
+from http import HTTPStatus
 
 from uuid import UUID, uuid4
 
@@ -17,6 +18,9 @@ def response_no_cache(response):
 	response["Cache-Control"] = "no-store"
 
 	return response
+
+class HttpResponseBackendError(HttpResponse):
+	status_code = 483 # Custom error code
 
 # ####### Pages #######
 
@@ -34,7 +38,7 @@ def home(request):
 
 @login_required
 def viewer(request, sim_uuid):
-	if lookup_simulation(UUID(sim_uuid)) is None:
+	if models.lookup_simulation(UUID(sim_uuid)) is None:
 		return HttpResponseNotFound(f"Simulation '{sim_uuid}' does not exist")
 
 	index_data = ""
@@ -52,8 +56,8 @@ def viewer(request, sim_uuid):
 def editor(request, src_uuid):
 	uuid_val = UUID(src_uuid)
 
-	as_simulation = lookup_simulation(uuid_val)
-	as_source_file = lookup_source_content(uuid_val)
+	as_simulation = models.lookup_simulation(uuid_val)
+	as_source_file = models.lookup_source_content(uuid_val)
 
 	from_simulation = not as_simulation is None
 	from_source_file = not as_source_file is None
@@ -95,6 +99,7 @@ def login_form(request):
 
 # ####### API Endpoints #######
 
+@login_required
 def frame_data(request):
 	if not "index" in request.GET:
 		return HttpResponseBadRequest("No frame index provided")
@@ -106,13 +111,15 @@ def frame_data(request):
 	sim_id = request.GET["uuid"]
 	index = request.GET["index"]
 
-	(step_file, viz_file) = archiver.get_simulation_step_files(UUID(sim_id), index)
+	files = archiver.get_simulation_step_files(UUID(sim_id), index)
+	if files is None: return HttpResponseNotFound(f"Simulation '{sim_id}' does not exist")
 
-	response = FileResponse(open(viz_file, "rb"))
+	response = FileResponse(open(files[1], "rb"))
 	response["Content-Encoding"] = "deflate"
 
 	return response_no_cache(response)
 
+@login_required
 def cell_info_from_index(request):
 	if not "cellid" in request.GET:
 		return HttpResponseBadRequest("No cell index provided")
@@ -128,8 +135,10 @@ def cell_info_from_index(request):
 	frameindex = request.GET["frameindex"]
 	cellid = request.GET["cellid"]
 
-	(step_file, viz_file) = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
-	cell_data = sv_format.read_state_with_id(step_file, int(cellid))
+	files = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
+	if files is None: return HttpResponseNotFound(f"No simulation with UUID '{sim_id}' found")
+
+	cell_data = sv_format.read_state_with_id(files[0], int(cellid))
 
 	response_content = json.dumps(cell_data.create_display_dict())
 	response = HttpResponse(response_content, content_type="application/json")
@@ -137,11 +146,15 @@ def cell_info_from_index(request):
 
 	return response_no_cache(response)
 
+@login_required
 def shape_list(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")
 
-	index_data = archiver.get_instance_index_data(UUID(request.GET["uuid"]))
+	sim_id = request.GET["uuid"]
+
+	index_data = archiver.get_instance_index_data(UUID(sim_id))
+	if index_data is None: return HttpResponseNotFound(f"No simulation with UUID '{sim_id}' found")
 
 	response_content = json.dumps(index_data["shape_list"])
 	response = HttpResponse(response_content, content_type="application/json")
@@ -151,7 +164,7 @@ def shape_list(request):
 
 @login_required
 def list_owned_simulations(request):
-	entries = SimulationEntry.objects.filter(owner=request.user)
+	entries = models.SimulationEntry.objects.filter(owner=request.user)
 
 	response_content = []
 	for sim in entries:
@@ -160,13 +173,22 @@ def list_owned_simulations(request):
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
 
-
 @login_required
 def create_source_file(request):
 	if not "name" in request.GET:
 		return HttpResponseBadRequest("No file name provided")
+	
+	src_name = request.GET["name"]
+	src_name = src_name.strip()
 
-	entry = SourceContentEntry(owner=request.user, name=request.GET["name"], uuid=uuid4(), content="")
+	# Check the simulation name
+	if src_name is "":
+		return HttpResponseBackendError("Empty Source file name is not allowed");
+
+	if not models.lookup_source_content_by_name(src_name) is None:
+		return HttpResponseBackendError(f"Source file with name '{src_name}' already exists");
+
+	entry = models.SourceContentEntry(owner=request.user, name=src_name, uuid=uuid4(), content="")
 	entry.save()
 
 	return response_no_cache(HttpResponse(str(entry.uuid)))
@@ -177,10 +199,10 @@ def delete_source_file(request):
 		return HttpResponseBadRequest("No file UUID provided")
 
 	src_uuid = request.GET["uuid"]
-	entry = lookup_source_content(UUID(src_uuid))
+	entry = models.lookup_source_content(UUID(src_uuid))
 
 	if entry is None:
-		return HttpResponseBadRequest(f"Source with UUID '{src_uuid}' not found")
+		return HttpResponseNotFound(f"Source with UUID '{src_uuid}' not found")
 
 	entry.delete()
 
@@ -192,7 +214,7 @@ def get_source_content(request):
 	
 	uuid_val = UUID(request.GET["uuid"])
 	
-	source_file = lookup_source_content(uuid_val)
+	source_file = models.lookup_source_content(uuid_val)
 	content = archiver.read_simulation_source(uuid_val) if source_file is None else source_file.content
 
 	return response_no_cache(HttpResponse(content, content_type="text/plain"))
@@ -203,7 +225,7 @@ def set_source_content(request):
 
 	uuid_val = UUID(request_json["uuid"])
 
-	source_file = lookup_source_content(uuid_val)
+	source_file = models.lookup_source_content(uuid_val)
 	source_content = request_json["source"]
 
 	if not source_file is None:
@@ -216,7 +238,7 @@ def set_source_content(request):
 
 @login_required
 def list_owned_source_files(request):
-	entries = SourceContentEntry.objects.filter(owner=request.user)
+	entries = models.SourceContentEntry.objects.filter(owner=request.user)
 
 	response_content = []
 	for src in entries:
@@ -247,6 +269,16 @@ def create_new_simulation(request):
 
 	if not type(sim_backend) is str: return HttpResponseBadRequest(f"Invalid backend data type: {type(sim_backend)}")
 
+	# Check the simulation name
+	sim_name = sim_name.strip()
+
+	if sim_name is "":
+		return HttpResponseBackendError("Empty simulation name is not allowed");
+
+	if not models.lookup_simulation_by_name(sim_name) is None:
+		return HttpResponseBackendError(f"Simulation with name '{sim_name}' already exists");
+
+	# Create the simulation and return its UUID
 	uuid = manager.create_simulation(request.user, sim_name, "", sim_source, sim_backend)
 
 	return HttpResponse(str(uuid))
@@ -255,8 +287,13 @@ def create_new_simulation(request):
 def stop_simulation(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")
+	
+	sim_id = UUID(request.GET["uuid"])
 
-	manager.kill_simulation(UUID(request.GET["uuid"]))
+	if models.lookup_simulation(sim_id) is None:
+		return HttpResponseNotFound(f"Simulation '{sim_id}' does not exist")
+	
+	manager.kill_simulation(sim_id)
 
 	return HttpResponse()
 
@@ -265,6 +302,11 @@ def delete_simulation(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")
 
-	manager.delete_simulation(UUID(request.GET["uuid"]))
+	sim_id = UUID(request.GET["uuid"])
+
+	if models.lookup_simulation(sim_id) is None:
+		return HttpResponseNotFound(f"Simulation '{sim_id}' does not exist")
+
+	manager.delete_simulation(sim_id)
 
 	return HttpResponse()

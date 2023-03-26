@@ -5,7 +5,7 @@ import uuid
 
 class SimulationEntry(models.Model):
 	owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-	title = models.TextField()
+	title = models.TextField(unique=True)
 	description = models.TextField()
 	uuid = models.UUIDField(default=uuid.uuid4, editable=True)
 	save_location = models.TextField()
@@ -15,7 +15,7 @@ class SimulationEntry(models.Model):
 
 class SourceContentEntry(models.Model):
 	owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-	name = models.TextField()
+	name = models.TextField(unique=True)
 	uuid = models.UUIDField(default=uuid.uuid4, editable=True)
 	content = models.TextField()
 
@@ -30,8 +30,22 @@ def lookup_simulation(id):
 	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
 		return None
 
+def lookup_simulation_by_name(name):
+	from cloudserver.models import SimulationEntry
+	
+	try:
+		return SimulationEntry.objects.get(title=name)
+	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+		return None
+
 def lookup_source_content(id):
 	try:
 		return SourceContentEntry.objects.get(uuid=id)
+	except (SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
+		return None
+
+def lookup_source_content_by_name(name):
+	try:
+		return SourceContentEntry.objects.get(name=name)
 	except (SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
 		return None

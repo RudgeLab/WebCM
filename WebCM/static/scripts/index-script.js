@@ -1,35 +1,38 @@
 var global__dialogDeletePros = null;
 
-function showDialog(visible, message) {
-	const dialogLayer = document.getElementById("dialog-layer");
-	const dialogMessage = document.getElementById("dialog-message");
-
-	dialogLayer.style = visible ? "" : "display: none;";
-	dialogMessage.innerText = message;
-}
-
 function openDialog(message) {
-	showDialog(true, message);
+	document.getElementById("dialog-layer").style = "";
+	document.getElementById("dialog-message").innerText = message;
 }
 
 function closeDialog() {
-	showDialog(false, "");
+	document.getElementById("dialog-layer").style = "display: none";
+	document.getElementById("dialog-message").innerText = "";
+}
+
+function showAlert(message) {
+	global__dialogDeletePros = { "noaction": true };
+
+	openDialog(message);
 }
 
 function handleDeleteSimulation(title, uuid) {
-	global__dialogDeletePros = { "uuid": uuid, "simulation": true };
+	global__dialogDeletePros = { "uuid": uuid, "simulation": true, "noaction": false };
 
 	openDialog(decodeURIComponent(title));
 }
 
 function handleDeleteSourceContent(title, uuid) {
-	global__dialogDeletePros = { "uuid": uuid, "simulation": false };
+	global__dialogDeletePros = { "uuid": uuid, "simulation": false, "noaction": false };
 
 	openDialog(title);
 }
 
 async function handleAcceptDelete(button) {
 	closeDialog();
+
+	if (global__dialogDeletePros == null) return;
+	if (global__dialogDeletePros["noaction"]) return;
 
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 	const uuid = global__dialogDeletePros["uuid"];
@@ -99,7 +102,11 @@ async function submitCreateSimulationRequest() {
 			})
 		});
 	
-		if (!response.ok) { throw new Error(`Request error: ${response.status}`); }
+		if (!response.ok) {
+			showAlert(await response.text());
+			return;
+		}
+
 		const simUUID = await response.text();
 	
 		window.location.href = `/view/${simUUID}/`;
@@ -107,8 +114,6 @@ async function submitCreateSimulationRequest() {
 
 	const simName = document.getElementById("input-create-name");
 	const sourceFileSelect = document.getElementById("select-simulation-src-file");
-
-	if (markAsError("input-create-name", simName.value == "")) return;
 
 	const radioBtnCM5 = document.getElementById("input-radio-cm5")
 	const version = (radioBtnCM5 && radioBtnCM5.checked) ? "CellModeller5" : "CellModeller4";
@@ -138,24 +143,22 @@ async function submitCreateSourceRequest() {
 
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 
-	fetch(`/api/createsourcefile?name=${name}`, {
+	const response = await fetch(`/api/createsourcefile?name=${name}`, {
 		method: "GET",
 		headers: {
 			"Accept": "text/plain",
 			"Content-Type": "text/plain",
 			"X-CSRFToken": csrfToken.value,
 		}
-	})
-	.then(async response => {
-		if (!response.ok) throw new Error(await response.text());
-		return response.text();
-	})
-	.then((uuid) => {
-		window.location.href = `/edit/${uuid}/`;
-	})
-	.catch((error) => {
-		console.log(`Error when creating new source file: ${error}`)
 	});
+
+	if (!response.ok) {
+		showAlert(await response.text());
+		return;
+	}
+
+	const uuid = await response.text();
+	window.location.href = `/edit/${uuid}/`;
 }
 
 async function refreshSimList() {

@@ -61,6 +61,8 @@ def get_instance_index_data(uuid):
 
 	if not uuid in global__archiver.sim_data:
 		sim = __get_simulation(uuid)
+		if sim is None: return None
+
 		index_path = os.path.join(sim.save_location, "index.json")
 
 		with open(index_path, "r") as index_file:
@@ -70,12 +72,13 @@ def get_instance_index_data(uuid):
 
 		return index_data
 	else:
-		return global__archiver.sim_data[uuid]
+		return global__archiver.sim_data.get(uuid, None)
 
 def get_simulation_step_files(uuid, index):
 	simulation = __get_simulation(uuid)
-	index_data = get_instance_index_data(uuid)
+	if simulation is None: return None
 
+	index_data = get_instance_index_data(uuid)
 	step_frame = os.path.join(simulation.save_location, index_data["stepframes"][index])
 	viz_frame = os.path.join(simulation.save_location, index_data["vizframes"][index])
 
