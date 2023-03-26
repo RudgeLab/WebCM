@@ -60,4 +60,5 @@
 	let tempButton = null;
 	if (tempButton = document.getElementById("upload-file-btn")) tempButton.onclick = (e) => { sourceUpload.click(); };
 	if (tempButton = document.getElementById("save-source-btn")) tempButton.onclick = (e) => saveSource();
+	if (tempButton = document.getElementById("home-btn")) tempButton.onclick = (e) => window.location = "/";
 })();

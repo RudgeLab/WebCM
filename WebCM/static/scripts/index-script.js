@@ -84,6 +84,27 @@ function markAsError(elemId, isError) {
 }
 
 async function submitCreateSimulationRequest() {
+	async function _create(name, source, version) {
+		const response = await fetch("/api/createnewsimulation", {
+			method: "POST",
+			headers: {
+				"Accept": "text/plain",
+				"Content-Type": "text/plain",
+				"X-CSRFToken": csrfToken.value,
+			},
+			body: JSON.stringify({
+				"name": name,
+				"source": source,
+				"backend": version
+			})
+		});
+	
+		if (!response.ok) { throw new Error(`Request error: ${response.status}`); }
+		const simUUID = await response.text();
+	
+		window.location.href = `/view/${simUUID}/`;
+	}
+
 	const simName = document.getElementById("input-create-name");
 	const sourceFileSelect = document.getElementById("select-simulation-src-file");
 
@@ -95,38 +116,20 @@ async function submitCreateSimulationRequest() {
 	const name = simName.value;
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 
-	let source = "";
-
 	if (sourceFileSelect.value != "") {
 		const sourceResponse = await fetch(`/api/getsrccontent?uuid=${sourceFileSelect.value}`);
 		if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
 		
-		source = await sourceResponse.text();
-	}
+		const source = await sourceResponse.text();
+		await _create(name, source, version);
+	} else {
+		const sourceUpload = document.getElementById("input-upload-file");
 
-	fetch("/api/createnewsimulation", {
-		method: "POST",
-		headers: {
-			"Accept": "text/plain",
-			"Content-Type": "text/plain",
-			"X-CSRFToken": csrfToken.value,
-		},
-		body: JSON.stringify({
-			"name": name,
-			"source": source,
-			"backend": version
-		})
-	})
-	.then(async response => {
-		if (!response.ok) throw new Error(await response.text());
-		return response.text();
-	})
-	.then((uuid) => {
-		window.location.href = `/view/${uuid}/`;
-	})
-	.catch((error) => {
-		console.log(`Error when creating new simulation: ${error}`)
-	});
+		sourceUpload.onchange = (event) => {
+			event.target.files[0].slice().text().then((content) => _create(name, content, version));
+		};
+		sourceUpload.click();
+	}
 }
 
 async function submitCreateSourceRequest() {
@@ -162,6 +165,11 @@ async function refreshSimList() {
 	const simItemContainer = document.getElementById("select-sim-item-container");
 	simItemContainer.innerHTML = "";
 
+	if (simList.length == 0) {
+		simItemContainer.innerHTML = `<div class="center-content"><p class="content-list-empty-text">No simulations</p></div>`;
+		return;
+	}
+
 	for (let sim of simList) {
 		const statusText = sim.isOnline ? "Online" : "Offline";
 
@@ -190,6 +198,11 @@ async function refreshSourceList() {
 
 	const srcItemContainer = document.getElementById("select-src-item-container");
 	srcItemContainer.innerHTML = "";
+	
+	if (srcList.length == 0) {
+		srcItemContainer.innerHTML = `<div class="center-content"><p class="content-list-empty-text">No Source File</p></div>`;
+		return;
+	}
 
 	for (let src of srcList) {
 		const item = document.createElement("div");
@@ -210,7 +223,7 @@ async function refreshSourceList() {
 	}
 
 	const sourceFileSelect = document.getElementById("select-simulation-src-file");
-	sourceFileSelect.innerHTML = `<option value="">&ltEmpty File&gt</option>`;
+	sourceFileSelect.innerHTML = `<option value="">&ltUpload File&gt</option>`;
 
 	for (let src of srcList) {
 		const item = document.createElement("div");

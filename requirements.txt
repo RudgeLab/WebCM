@@ -3,4 +3,4 @@ daphne
 channels
 msgpack
 numpy
-uvicorn
+uvicorn[standard]
