@@ -23,7 +23,10 @@ function handleLogin(e) {
         body: postParams,
     })
     .then((response) => {
-        if (!response.ok) throw new Error("Response error");
+        if (!response.ok) {
+            response.text().then((body) => { alert(`Failed to log in:\n${body}`) });
+            return;
+        };
 
         let redirectTo = nextPage.value;
         if (redirectTo == "") redirectTo = "/";

@@ -8,8 +8,6 @@ from saveviewer import archiver
 from saveviewer import format as sv_format
 from simrunner.instances import manager
 
-from http import HTTPStatus
-
 from uuid import UUID, uuid4
 
 import json
