@@ -186,6 +186,8 @@ function connectToServer(context) {
 					requestFrame(context, context["simUUID"], frameCount - 1);
 
 					context["timelineSlider"].value = frameCount;
+				} else {
+					setSimFrame(context["simInfo"].frameIndex, context["simInfo"].frameCount);
 				}
 			} else if (action === "newshape") {
 				await requestShapes(context, context["simUUID"]);
