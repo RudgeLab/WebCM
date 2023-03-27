@@ -45,3 +45,19 @@ If an error occurs when reloading the script (e.g. because of a syntax error), a
 
 <p align="center"><img src="/Documentation/Screenshots/screenshot6.png" alt="Message log error"/></p>
 
+
+# Adapting CellModeller scripts to WebCM
+WebCM uses a new renderer to extract cell data from the simulation. If you are copying scripts for CellModeller to WebCM, you'll have to replace the old renderers with the new WebRenderer.
+
+To add WebRenderer to your simulation, add the following lines:
+
+	from CellModeller.GUI.WebRenderer import WebRenderer
+	
+and
+	
+	renderer = WebRenderer()
+	sim.addRenderer(renderer)
+
+WebRenderer comes with CellModeller, not WebCM, so you'll need to make sure CellModeller is up-to-date. You will also have to make sure not to use **or import** any of the other renderers.
+
+The WebRenderer also allows you to add shapes and attach a signals grid, which will be displayed in the viewer. Look at the example scripts (such as `ex3_simpleSignal` or `SPPTest_sphere`) for more information.
