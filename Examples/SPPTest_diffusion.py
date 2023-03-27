@@ -82,7 +82,6 @@ def setup(sim):
     # Add some objects to draw the models
     renderer = WebRenderer()
     renderer.attachSignals(sig, integ)
-
     sim.addRenderer(renderer)
 
     sim.pickleSteps = 1

@@ -1,6 +1,7 @@
 import random
 from CellModeller.Regulation.ModuleRegulator import ModuleRegulator
 from CellModeller.Biophysics.BacterialModels.CLBacterium import CLBacterium
+from CellModeller.GUI.WebRenderer import WebRenderer
 import numpy
 import math
 
@@ -17,11 +18,9 @@ def setup(sim):
     biophys.addPlane((0,0,0),(0,0,-1),1.0)
     biophys.addPlane((0,0,0),(0,0,1),5e-2)
 
-    if sim.is_gui:
-        # Add some objects to draw the models
-        from CellModeller.GUI import Renderers
-        therenderer = Renderers.GLBacteriumRenderer(sim)
-        sim.addRenderer(therenderer)
+    # Add the web renderer
+    renderer = WebRenderer()
+    sim.addRenderer(renderer)
 
     sim.pickleSteps = 10
 

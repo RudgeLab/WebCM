@@ -51,11 +51,9 @@ def setup(sim):
         cell_dir /= np.sqrt(np.sum(cell_dir*cell_dir))
         sim.addCell(cellType=0, dir=tuple(cell_dir), length=0.0, pos=tuple(p))
 
-
     print('sphere_rad = ', sphere_rad)
     biophys.addSphere((0,0,0), sphere_rad, 1.0, 1.)
     biophys.addSphere((0,0,0), sphere_rad, 1.0, -1.)
-
 
     # Add some objects to draw the models
     therenderer = Renderers.WebRenderer()

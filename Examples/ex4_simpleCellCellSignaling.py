@@ -39,7 +39,6 @@ def setup(sim):
 
     renderer = WebRenderer()
     renderer.attachSignals(sig, integ)
-
     sim.addRenderer(renderer)
 
     sim.pickleSteps = 10
