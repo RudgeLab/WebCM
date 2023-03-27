@@ -347,6 +347,8 @@ export function pushFrameData(gl, context, dataBuffer) {
 		const colorVolumeView = new Uint8Array(dataBuffer, colorVolumeOffset, colorVolumeSize);
 
 		createColorVolume(gl, context, correctOrigin, gridCellCount, gridCellSize, colorVolumeView);
+	} else {
+		context["colorVolume"]["enabled"] = false;
 	}
 
 	return [ cellCount ];
