@@ -204,25 +204,24 @@ async function refreshSourceList() {
 	
 	if (srcList.length == 0) {
 		srcItemContainer.innerHTML = `<div class="center-content"><p class="content-list-empty-text">No Source File</p></div>`;
-		return;
-	}
-
-	for (let src of srcList) {
-		const item = document.createElement("div");
-		item.innerHTML = 
-`<div class="select-sim-item">
-	<div class="select-sim-labels" style="height: unset;">
-		<p style="display:flex;align-items:center;height:100%;">${src.title}</p>
-	</div>
-	<div class="select-sim-buttons">
-		<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
-		<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/"><span class="shape-right-arrow"></span></a>
-	</div>
-</div>`;
-
-		item.querySelector("a.sim-button-other").onclick = e => handleDeleteSourceContent(`Delete simulation '${src.title}'?`, src.uuid);
-
-		srcItemContainer.appendChild(item.firstChild);
+	} else {
+		for (let src of srcList) {
+			const item = document.createElement("div");
+			item.innerHTML = 
+				`<div class="select-sim-item">
+					<div class="select-sim-labels" style="height: unset;">
+						<p style="display:flex;align-items:center;height:100%;">${src.title}</p>
+					</div>
+					<div class="select-sim-buttons">
+						<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
+						<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/"><span class="shape-right-arrow"></span></a>
+					</div>
+				</div>`;
+	
+			item.querySelector("a.sim-button-other").onclick = e => handleDeleteSourceContent(`Delete simulation '${src.title}'?`, src.uuid);
+	
+			srcItemContainer.appendChild(item.firstChild);
+		}
 	}
 
 	const sourceFileSelect = document.getElementById("select-simulation-src-file");

@@ -209,7 +209,7 @@ function connectToServer(context) {
 		};
 		
 		commsSocket.onclose = (e) => {
-			setStatusMessage("Not connected");
+			setStatusMessage("Connection Lost");
 
 			context["commsSocket"] = null;
 		};
@@ -502,7 +502,7 @@ async function initFrame(gl, context) {
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
 	
-	document.getElementById("thin-cell-outlines").onchange = function(event) { context["renderSettings"]["thinOutlines"] = this.checked; };
+	document.getElementById("no-cell-outlines").onchange = function(event) { context["renderSettings"]["thinOutlines"] = this.checked; };
 	document.getElementById("signal-density-input").onchange = function(event) { context["renderSettings"]["signalVolumeDensity"] = this.value; };
 	document.getElementById("depth-peel-layers-input").onchange = function(event) { context["renderSettings"]["depthPeeling"]["layerCount"] = Math.max(Math.min(this.value, 64), 1); };
 	document.getElementById("signals-enabled-input").onchange = function(event) { context["renderSettings"]["signalVolumeEnabled"] = this.checked; };
