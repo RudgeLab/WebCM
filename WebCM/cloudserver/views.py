@@ -180,7 +180,7 @@ def create_source_file(request):
 	src_name = src_name.strip()
 
 	# Check the simulation name
-	if src_name is "":
+	if src_name == "":
 		return HttpResponseBackendError("Empty Source file name is not allowed");
 
 	if not models.lookup_source_content_by_name(src_name) is None:
@@ -270,7 +270,7 @@ def create_new_simulation(request):
 	# Check the simulation name
 	sim_name = sim_name.strip()
 
-	if sim_name is "":
+	if sim_name == "":
 		return HttpResponseBackendError("Empty simulation name is not allowed");
 
 	if not models.lookup_simulation_by_name(sim_name) is None:
