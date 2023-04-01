@@ -15,8 +15,8 @@ def setup(sim):
     sim.init(biophys, regul, None, None)
 
     sim.addCell(cellType=0, pos=(0,0,0))
-    biophys.addPlane((0,0,0),(0,0,-1),1.0)
-    biophys.addPlane((0,0,0),(0,0,1),5e-2)
+    biophys.addPlane((0,0,0),(0,0,1),1.0)
+    biophys.addPlane((0,0,0),(0,0,-1),5e-2)
 
     # Add the web renderer
     renderer = WebRenderer()
