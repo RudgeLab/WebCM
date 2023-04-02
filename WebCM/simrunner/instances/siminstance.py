@@ -159,12 +159,16 @@ def instance_control_thread(pipe, instance_params):
 	# will only affect the output streams of this simulation instance.
 	out_stream = sys.stdout
 	err_stream = sys.stderr
+	
+	# This should probably only be used for debugging
+	redirect_io_to_file = True
 
-	log_file_path = os.path.join(instance_params.root_dir, "log.txt")
+	if redirect_io_to_file:
+		log_file_path = os.path.join(instance_params.root_dir, "log.txt")
 
-	log_stream = open(log_file_path, "w")
-	sys.stdout = log_stream
-	sys.stderr = log_stream
+		log_stream = open(log_file_path, "w")
+		sys.stdout = log_stream
+		sys.stderr = log_stream
 
 	running = True
 	needs_reload = False
@@ -245,7 +249,8 @@ def instance_control_thread(pipe, instance_params):
 				# instance won't be closed properly, and the print output will not be written to the file
 				# To avoid this, we'll manually flush the stream after every frame (we might still loose
 				# a small amount of print output, but its better than nothing).
-				log_stream.flush()
+				sys.stdout.flush()
+				sys.stderr.flush()
 
 			backend.shutdown()
 
@@ -275,4 +280,5 @@ def instance_control_thread(pipe, instance_params):
 	finally:
 		endpoint.shutdown()
 
-	log_stream.close()
+	if redirect_io_to_file:
+		log_stream.close()
