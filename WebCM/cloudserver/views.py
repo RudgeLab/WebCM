@@ -1,4 +1,4 @@
-from django.http import HttpResponse, FileResponse, HttpResponseRedirect, HttpResponseNotFound, HttpResponseBadRequest, HttpResponseNotAllowed
+from django.http import HttpResponse, FileResponse, HttpResponseRedirect, HttpResponseBadRequest, HttpResponseNotAllowed
 from django.template import RequestContext, Template
 
 from django.contrib.auth.decorators import login_required
@@ -20,6 +20,14 @@ def response_no_cache(response):
 class HttpResponseBackendError(HttpResponse):
 	status_code = 483 # Custom error code
 
+	def __init__(self, *args, **kwargs):
+		super().__init__(args, kwargs)
+
+		# Django prints an extra error message when logging responses that have a status code >= 400. I don't like that.
+		# Django uses `_has_been_logged` in django.utils.log.log_response to check if it should log the response or not.
+		# This doesn't seem to be used anywhere else, so I think its ok if we set it here
+		self._has_been_logged = True
+
 # ####### Pages #######
 
 @login_required
@@ -37,7 +45,7 @@ def home(request):
 @login_required
 def viewer(request, sim_uuid):
 	if models.lookup_simulation(UUID(sim_uuid)) is None:
-		return HttpResponseNotFound(f"Simulation '{sim_uuid}' does not exist")
+		return HttpResponseBackendError(f"Simulation '{sim_uuid}' does not exist")
 
 	index_data = ""
 
@@ -61,7 +69,7 @@ def editor(request, src_uuid):
 	from_source_file = not as_source_file is None
 
 	if not from_simulation and not from_source_file:
-		return HttpResponseNotFound(f"The provided UUID ({src_uuid}) did not match a simulation or a source file")
+		return HttpResponseBackendError(f"The provided UUID ({src_uuid}) did not match a simulation or a source file")
 
 	index_data = ""
 
@@ -110,7 +118,7 @@ def frame_data(request):
 	index = request.GET["index"]
 
 	files = archiver.get_simulation_step_files(UUID(sim_id), index)
-	if files is None: return HttpResponseNotFound(f"Simulation '{sim_id}' does not exist")
+	if files is None: return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
 
 	response = FileResponse(open(files[1], "rb"))
 	response["Content-Encoding"] = "deflate"
@@ -134,9 +142,10 @@ def cell_info_from_index(request):
 	cellid = request.GET["cellid"]
 
 	files = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
-	if files is None: return HttpResponseNotFound(f"No simulation with UUID '{sim_id}' found")
+	if files is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' found")
 
 	cell_data = sv_format.read_state_with_id(files[0], int(cellid))
+	if cell_data is None: return HttpResponseBackendError(f"Failed find data for cell {cellid}")
 
 	response_content = json.dumps(cell_data.create_display_dict())
 	response = HttpResponse(response_content, content_type="application/json")
@@ -152,7 +161,7 @@ def shape_list(request):
 	sim_id = request.GET["uuid"]
 
 	index_data = archiver.get_instance_index_data(UUID(sim_id))
-	if index_data is None: return HttpResponseNotFound(f"No simulation with UUID '{sim_id}' found")
+	if index_data is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' found")
 
 	response_content = json.dumps(index_data["shape_list"])
 	response = HttpResponse(response_content, content_type="application/json")
@@ -200,7 +209,7 @@ def delete_source_file(request):
 	entry = models.lookup_source_content(UUID(src_uuid))
 
 	if entry is None:
-		return HttpResponseNotFound(f"Source with UUID '{src_uuid}' not found")
+		return HttpResponseBackendError(f"Source with UUID '{src_uuid}' not found")
 
 	entry.delete()
 
@@ -289,7 +298,7 @@ def stop_simulation(request):
 	sim_id = UUID(request.GET["uuid"])
 
 	if models.lookup_simulation(sim_id) is None:
-		return HttpResponseNotFound(f"Simulation '{sim_id}' does not exist")
+		return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
 	
 	manager.kill_simulation(sim_id)
 
@@ -303,7 +312,7 @@ def delete_simulation(request):
 	sim_id = UUID(request.GET["uuid"])
 
 	if models.lookup_simulation(sim_id) is None:
-		return HttpResponseNotFound(f"Simulation '{sim_id}' does not exist")
+		return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
 
 	manager.delete_simulation(sim_id)
 

@@ -171,8 +171,11 @@ def __read_state_internal(path, target_id):
 	raw_data = None
 
 	# Read and unpack the file
-	with open(path, "rb") as in_file:
-		raw_data = zlib.decompress(in_file.read())
+	try:
+		with open(path, "rb") as in_file:
+			raw_data = zlib.decompress(in_file.read())
+	except FileNotFoundError as e:
+		return None
 
 	unpacked_data = msgpack.unpackb(raw_data, strict_map_key=False)
 
