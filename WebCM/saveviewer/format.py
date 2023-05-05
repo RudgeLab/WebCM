@@ -125,6 +125,12 @@ def write_states_to_csv(path, states):
 	return
 
 def write_states(path, cell_states, id_attribute, attributes_to_pack):
+	buffer = write_states_to_buffer(cell_states, id_attribute, attributes_to_pack)
+
+	with open(path, "wb") as out_file:
+		out_file.write(buffer)
+
+def write_states_to_buffer(cell_states, id_attribute, attributes_to_pack):
 	key_mappings = { "id": 0 }
 	cell_objects = []
 
@@ -161,22 +167,13 @@ def write_states(path, cell_states, id_attribute, attributes_to_pack):
 		
 		raise TypeError(f"Could not pack type: {type(obj)}")
 
-	with open(path, "wb") as out_file:
-		packed_data = msgpack.packb(output_object, default=default)
-
-		out_file.write(zlib.compress(packed_data, 2))
+	packed_data = msgpack.packb(output_object, default=default)
+	return zlib.compress(packed_data, 2)
 
 
-def __read_state_internal(path, target_id):
-	raw_data = None
-
-	# Read and unpack the file
-	try:
-		with open(path, "rb") as in_file:
-			raw_data = zlib.decompress(in_file.read())
-	except FileNotFoundError as e:
-		return None
-
+def __read_state_internal(data_buffer, target_id):
+	# Decompress and unpack the file
+	raw_data = zlib.decompress(data_buffer)
 	unpacked_data = msgpack.unpackb(raw_data, strict_map_key=False)
 
 	# Create reverse key mappings
@@ -202,7 +199,18 @@ def __read_state_internal(path, target_id):
 def read_state_with_id(path, target_id):
 	assert not target_id is None
 
-	return __read_state_internal(path, target_id)
+	try:
+		with open(path, "rb") as in_file:
+			return __read_state_internal(in_file.read(), target_id)
+	except FileNotFoundError as e:
+		return None
 
 def read_all_states(path):
-	return __read_state_internal(path, None)
+	try:
+		with open(path, "rb") as in_file:
+			return __read_state_internal(in_file.read(), None)
+	except FileNotFoundError as e:
+		return None
+	
+def read_all_states_from_buffer(data):
+	return __read_state_internal(data, None)

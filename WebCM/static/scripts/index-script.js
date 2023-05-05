@@ -45,7 +45,7 @@ async function handleAcceptDelete(button) {
 	await fetch(deleteURL, {
 		method: "GET",
 		headers: {
-			"Accept": "text/plain",
+//			"Accept": "text/plain",
 			"Content-Type": "text/plain",
 			"X-CSRFToken": csrfToken.value,
 		}
@@ -91,7 +91,7 @@ async function submitCreateSimulationRequest() {
 		const response = await fetch("/api/createnewsimulation", {
 			method: "POST",
 			headers: {
-				"Accept": "text/plain",
+//				"Accept": "text/plain",
 				"Content-Type": "text/plain",
 				"X-CSRFToken": csrfToken.value,
 			},
@@ -146,7 +146,7 @@ async function submitCreateSourceRequest() {
 	const response = await fetch(`/api/createsourcefile?name=${name}`, {
 		method: "GET",
 		headers: {
-			"Accept": "text/plain",
+//			"Accept": "text/plain",
 			"Content-Type": "text/plain",
 			"X-CSRFToken": csrfToken.value,
 		}

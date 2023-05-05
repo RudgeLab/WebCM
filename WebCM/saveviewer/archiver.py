@@ -79,6 +79,8 @@ def get_simulation_step_files(uuid, index):
 	if simulation is None: return None
 
 	index_data = get_instance_index_data(uuid)
+	if index_data["num_frames"] <= int(index): return None
+
 	step_frame = os.path.join(simulation.save_location, index_data["stepframes"][index])
 	viz_frame = os.path.join(simulation.save_location, index_data["vizframes"][index])
 

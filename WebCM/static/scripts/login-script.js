@@ -13,7 +13,7 @@ function handleLogin(e) {
 
     const postParams = `username=${encodeURIComponent(username.value)}&password=${encodeURIComponent(password.value)}`;
 
-    fetch("/api/userauth/signin", {
+    fetch("/api/userauth/django_signin", {
         method: "POST",
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",

@@ -3,6 +3,12 @@ from django.template import RequestContext, Template
 
 from django.contrib.auth.decorators import login_required
 
+# from rest_framework.response import Response
+from rest_framework.parsers import BaseParser
+from rest_framework.decorators import api_view
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+
 from cloudserver import settings, models
 from saveviewer import archiver
 from saveviewer import format as sv_format
@@ -12,13 +18,35 @@ from uuid import UUID, uuid4
 
 import json
 
+class HttpResponseBackendError(HttpResponse):
+	status_code = 483 # Custom error code
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(args, kwargs)
+
+		# Django prints an extra error message when logging responses that have a status code >= 400. I don't like that.
+		# Django uses `_has_been_logged` in django.utils.log.log_response to check if it should log the response or not.
+		# This doesn't seem to be used anywhere else, so I think its ok if we set it here
+		self._has_been_logged = True
+
+class PassthroughParser(BaseParser):
+    media_type = '*/*'
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        return stream
+
+def authenticate_view(view_params):
+	def decorator(func):
+		func.authentication_classes = [SessionAuthentication, TokenAuthentication]
+		func.permission_classes = [IsAuthenticated]
+		func.parser_classes = [PassthroughParser]
+		return api_view(view_params)(func)
+	return decorator
+
 def response_no_cache(response):
 	response["Cache-Control"] = "no-store"
 
 	return response
-
-class HttpResponseBackendError(HttpResponse):
-	status_code = 483 # Custom error code
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(args, kwargs)
@@ -105,8 +133,30 @@ def login_form(request):
 
 # ####### API Endpoints #######
 
-@login_required
-def frame_data(request):
+@authenticate_view(["GET"])
+def sim_header(request):
+	if not "uuid" in request.GET:
+		return HttpResponseBadRequest("No simulation UUID provided")
+
+	sim_id = UUID(request.GET["uuid"])
+	simulation = models.lookup_simulation(sim_id)
+	index_data = archiver.get_instance_index_data(sim_id)
+	is_online = manager.is_simulation_running(sim_id)
+
+	response_content = json.dumps({
+		"uuid": str(simulation.uuid),
+		"name": simulation.title,
+		"frameCount": index_data["num_frames"],
+		"isOnline": is_online,
+		"crashMessage": index_data["crash_message"] if index_data.get("has_crashed") else None
+	})
+
+	response = HttpResponse(response_content, content_type="application/json")
+	response["Content-Length"] = len(response_content)
+	return response
+
+@authenticate_view(["GET"])
+def viz_data(request):
 	if not "index" in request.GET:
 		return HttpResponseBadRequest("No frame index provided")
 
@@ -118,14 +168,32 @@ def frame_data(request):
 	index = request.GET["index"]
 
 	files = archiver.get_simulation_step_files(UUID(sim_id), index)
-	if files is None: return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
+	if files is None: return HttpResponseBackendError(f"Index '{index}' in simulation '{sim_id}' does not exist")
 
 	response = FileResponse(open(files[1], "rb"))
 	response["Content-Encoding"] = "deflate"
 
 	return response_no_cache(response)
 
-@login_required
+@authenticate_view(["GET"])
+def cell_states(request):
+	if not "index" in request.GET:
+		return HttpResponseBadRequest("No frame index provided")
+
+	if not "uuid" in request.GET:
+		return HttpResponseBadRequest("No simulation UUID provided")
+
+	# Read simulation file
+	sim_id = request.GET["uuid"]
+	index = request.GET["index"]
+
+	files = archiver.get_simulation_step_files(UUID(sim_id), index)
+	if files is None: return HttpResponseBackendError(f"Index '{index}' in simulation '{sim_id}' does not exist")
+
+	response = FileResponse(open(files[0], "rb"))
+	return response_no_cache(response)
+
+@authenticate_view(["GET"])
 def cell_info_from_index(request):
 	if not "cellid" in request.GET:
 		return HttpResponseBadRequest("No cell index provided")
@@ -142,7 +210,7 @@ def cell_info_from_index(request):
 	cellid = request.GET["cellid"]
 
 	files = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
-	if files is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' found")
+	if files is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' (index {frameindex}) found")
 
 	cell_data = sv_format.read_state_with_id(files[0], int(cellid))
 	if cell_data is None: return HttpResponseBackendError(f"Failed find data for cell {cellid}")
@@ -153,7 +221,7 @@ def cell_info_from_index(request):
 
 	return response_no_cache(response)
 
-@login_required
+@authenticate_view(["GET"])
 def shape_list(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")
@@ -169,7 +237,7 @@ def shape_list(request):
 
 	return response_no_cache(response)
 
-@login_required
+@authenticate_view(["GET"])
 def list_owned_simulations(request):
 	entries = models.SimulationEntry.objects.filter(owner=request.user)
 
@@ -180,7 +248,7 @@ def list_owned_simulations(request):
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
 
-@login_required
+@authenticate_view(["GET"])
 def create_source_file(request):
 	if not "name" in request.GET:
 		return HttpResponseBadRequest("No file name provided")
@@ -200,7 +268,7 @@ def create_source_file(request):
 
 	return response_no_cache(HttpResponse(str(entry.uuid)))
 
-@login_required
+@authenticate_view(["GET"])
 def delete_source_file(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No file UUID provided")
@@ -243,7 +311,7 @@ def set_source_content(request):
 
 	return response_no_cache(HttpResponse())
 
-@login_required
+@authenticate_view(["GET"])
 def list_owned_source_files(request):
 	entries = models.SourceContentEntry.objects.filter(owner=request.user)
 
@@ -253,7 +321,7 @@ def list_owned_source_files(request):
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
 
-@login_required
+@authenticate_view(["POST"])
 def create_new_simulation(request):
 	# This needs to be a POST request since this method is not idempotent
 	if request.method != "POST":
@@ -290,7 +358,7 @@ def create_new_simulation(request):
 
 	return HttpResponse(str(uuid))
 
-@login_required
+@authenticate_view(["GET"])
 def stop_simulation(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")
@@ -304,7 +372,7 @@ def stop_simulation(request):
 
 	return HttpResponse()
 
-@login_required
+@authenticate_view(["GET"])
 def delete_simulation(request):
 	if not "uuid" in request.GET:
 		return HttpResponseBadRequest("No simulation UUID provided")

@@ -31,7 +31,9 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     # APIs
-    path("api/framedata", views.frame_data),
+    path("api/simheader", views.sim_header),
+    path("api/vizdata", views.viz_data),
+    path("api/cellstates", views.cell_states),
     path("api/cellinfoindex", views.cell_info_from_index),
     path("api/shapelist", views.shape_list),
 

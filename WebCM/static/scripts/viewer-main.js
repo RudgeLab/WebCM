@@ -80,7 +80,7 @@ async function requestFrame(context, uuid, index) {
 
 	const frameRequestIndex = context["frameRequestIndex_Latest"]++;
 	
-	const frameData = await fetch(`/api/framedata?index=${index}&uuid=${uuid}`);
+	const frameData = await fetch(`/api/vizdata?index=${index}&uuid=${uuid}`);
 	if (!frameData.ok) {
 		console.error(`Error when requesting frame ${index}: ${frameData.status} - ${frameData.statusText}`);
 		return;
