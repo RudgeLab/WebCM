@@ -120,6 +120,68 @@ async function requestFrame(context, uuid, index) {
 	await updateCellInfo(context);
 }
 
+async function downloadAllFrames(context) {
+	if (context["isDownloadingFrames"]) {
+		return;
+	}
+
+	context["isDownloadingFrames"] = true;
+
+	const uuid = context["simUUID"];
+	const frameCount = context["simInfo"].frameCount;
+	const simName = context["simInfo"].name;
+
+	const finalBlobContainer = new zip.BlobWriter();
+	const zipWriter = new zip.ZipWriter(finalBlobContainer);
+
+	const downloadBtn = document.getElementById("download-btn");
+	downloadBtn.textContent = `0 / ${frameCount} `;	
+	downloadBtn.style.pointerEvents = "none";
+
+	let failed = false;
+
+	for (let i = 0; i < frameCount; i++) {
+		const filename = `step-${i + 1}.cm5_step`
+		
+		const response = await fetch(`/api/cellstates?uuid=${uuid}&index=${i}`);
+		if (!response.ok) {
+			failed = true;
+			break;
+		}
+		
+		const cellData = await response.blob();
+		const cellDataReader = new zip.BlobReader(cellData);
+		await zipWriter.add(filename, cellDataReader);
+
+		downloadBtn.textContent = `${i + 1} / ${frameCount} `;	
+	}
+	
+	await zipWriter.close();
+
+	if (failed) {
+		downloadBtn.style.pointerEvents = "";
+		downloadBtn.textContent = "Failed to download";
+		context["isDownloadingFrames"] = false;
+
+		return;
+	}
+
+	downloadBtn.textContent = "Packaging...";
+
+	const zippedData = await finalBlobContainer.getData();
+	const dataURL = URL.createObjectURL(zippedData);
+
+	const downloaderLink = document.getElementById("downloader-link");
+	downloaderLink.href = dataURL;
+	downloaderLink.download = `${simName}.zip`;
+	downloaderLink.click();
+	URL.revokeObjectURL(dataURL);
+
+	downloadBtn.style.pointerEvents = "";
+	downloadBtn.textContent = "Download";
+	context["isDownloadingFrames"] = false;
+}
+
 function connectToSimulation(context, uuid) {
 	connectToServer(context)
 		.then((socket) => { socket.send(JSON.stringify({ "action": "connectto", "data": `${uuid}` })); });
@@ -424,6 +486,8 @@ async function initFrame(gl, context) {
 	context["frameRequestIndex_Latest"] = 0;
 	context["isMessageLogOpen"] = false;
 	context["isSettingsWindowOpen"] = false;
+	
+	context["isDownloadingFrames"] = false;
 
 	//Initialize camera details
 	context["camera"] = {
@@ -498,6 +562,7 @@ async function initFrame(gl, context) {
 
 	let tempButton = null;
 	document.getElementById("source-btn").onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
+	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { downloadAllFrames(context); };
 	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(context); };
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };

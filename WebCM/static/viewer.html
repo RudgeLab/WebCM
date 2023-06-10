@@ -5,6 +5,7 @@
 	<script src="/static/scripts/gl-matrix-min.js" type="module"></script>
 	<script src="/static/scripts/viewer-main.js" type="module"></script>
 	<script src="/static/scripts/viewer-render.js" type="module"></script>
+	<script src="/static/scripts/zip.min.js" type="module"></script>
 	<link rel="stylesheet" href="/static/viewer-stylesheet.css"/>
 	<title>CellModeller Simulation</title>
 </head>
@@ -70,6 +71,10 @@
 				<div style="display:flex;flex-direction:row;">
 					<button id="reload-btn" class="grey-button" style="flex:1;">Reload</button>
 					<button id="stop-btn" class="grey-button" style="flex:0.7;">Stop</button>
+				</div>
+				<div style="display:flex;flex-direction:column;">
+					<button id="download-btn" class="grey-button">Download</button> <!-- Remember to change the text in `downloadAllFrames` -->
+					<a id="downloader-link" style="display:none"></a>
 				</div>
 			</div>
 			<div id="message-log-container" class="item-background overlay-window-centered">
