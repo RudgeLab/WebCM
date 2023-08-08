@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-(r=sn9c$ri39&jsx0oi=lyqx+03+79saiiaw!m!w1-)2euzg%!
 DEBUG = True
 ENABLE_CELLMODELLER5 = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 SITE_ID = 1
 
