@@ -132,6 +132,24 @@ html, body {
 	flex-direction: row;
 }
 
+.section-header {
+	display: flex;
+	flex-direction: row;
+}
+
+.section-header span:nth-child(1), .section-header span:nth-child(3) {
+	height: 0;
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	border-radius: 0;
+	margin: auto 0.3rem;
+
+	flex: 1;
+}
+
+.section-header span:nth-child(2) {
+	background-color: none;
+}
+
 /****** Message log ******/
 #message-log-container {
 	width: 30rem;
@@ -193,25 +211,7 @@ html, body {
 	bottom: 0;
 	right: 0;
 
-	width: 20rem;
-}
-
-.details-header {
-	display: flex;
-	flex-direction: row;
-}
-
-.details-header span:nth-child(1), .details-header span:nth-child(3) {
-	height: 0;
-	border: 1px solid rgba(255, 255, 255, 0.5);
-	border-radius: 0;
-	margin: auto 0.3rem;
-
-	flex: 1;
-}
-
-.details-header span:nth-child(2) {
-	background-color: none;
+	width: 23rem;
 }
 
 .details-keyvalue-table tr td:nth-child(1) {
@@ -297,4 +297,24 @@ input[type="checkbox"] {
 .grey-button:active {
 	background-color: #B1B1B9;
 	border-color: #565660;
+}
+
+#download-options-container {
+	width: 16rem;
+
+	display: none;
+}
+
+#download-options-inputs-box {
+	flex: 1;
+	margin: 0.3rem;
+	margin-top: 0.2rem;
+}
+
+#download-options-inputs-box table tbody tr td:nth-child(2) {
+	text-align: right;
+}
+
+#download-options-inputs-box table tbody tr td:nth-child(2) input[type="number"] {
+	width: 5rem;
 }

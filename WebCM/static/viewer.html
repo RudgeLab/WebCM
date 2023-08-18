@@ -46,7 +46,7 @@
 				<table>
 					<tbody>
 						<tr><td colspan="2">
-							<div class="details-header"><span></span><span>Simulation details</span><span></span></div>
+							<div class="section-header"><span></span><span>Simulation details</span><span></span></div>
 						</td></tr>
 					</tbody>
 					<tbody class="details-keyvalue-table">
@@ -55,7 +55,7 @@
 					</tbody>
 					<tbody id="cell-details-header">
 						<tr><td colspan="2">
-							<div class="details-header"><span></span><span>Cell Information</span><span></span></div>
+							<div class="section-header"><span></span><span>Cell Information</span><span></span></div>
 						</td></tr>
 					</tbody>
 					<tbody id="cell-details-section" class="details-keyvalue-table">
@@ -86,10 +86,11 @@
 					<textarea id="message-log-text" readonly></textarea>
 				</div>
 			</div>
+
 			<div id="settings-container" class="item-background overlay-window-centered">
 				<div class="overlay-window-backbone">
 					<div class="overlay-window-header">
-						<div class="details-header" style="flex:1"><span></span><span>Settings window</span><span></span></div>
+						<div class="section-header" style="flex:1"><span></span><span>Settings window</span><span></span></div>
 						<p id="settings-close" class="cursor-pointer">[x]</p>
 					</div>
 					<div id="settings-inputs-box">
@@ -115,6 +116,31 @@
 					</div>
 				</div>
 			</div>
+
+			<div id="download-options-container" class="item-background overlay-window-centered">
+				<div class="overlay-window-backbone">
+					<div class="overlay-window-header">
+						<div class="section-header" style="flex:1"><span></span><span>Download options</span><span></span></div>
+					</div>
+					<div id="download-options-inputs-box">
+						<table>
+							<tbody class="details-keyvalue-table">
+								<tr><td>Download from</td><td>
+									<input type="number" id="download-range-start-input" min="1" step="1" value="1">
+								</td></tr>
+								<tr><td>Download to</td><td>
+									<input type="number" id="download-range-end-input" min="1" step="1" value="1">
+								</td></tr>
+							</tbody>
+						</table>
+						<div style="display:flex">
+							<button id="download-options-confirm" class="grey-button" style="flex:1">Download</button>
+							<button id="download-options-cancel" class="grey-button" style="flex:1">Cancel</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
 		</div>
 	</div>
 </body>

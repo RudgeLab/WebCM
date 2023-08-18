@@ -34,6 +34,23 @@ function toggleSettings(context) {
 	else showSettings(context);
 }
 
+function showDownloadOptions(context) {
+	document.getElementById("download-options-container").style.display = "inline";
+
+	context["isDownloadOptionsWindowOpen"] = true;
+}
+
+function closeDownloadOptions(context) {
+	document.getElementById("download-options-container").style.display = "none";
+
+	context["isDownloadOptionsWindowOpen"] = false;
+}
+
+function toggleDownloadOptions(context) {
+	if (context["isDownloadOptionsWindowOpen"]) closeDownloadOptions(context);
+	else showDownloadOptions(context);
+}
+
 /****** Init log ******/
 function openInitLogWindow(context, title) {
 	document.getElementById("message-log-title").innerText = title;
@@ -120,31 +137,58 @@ async function requestFrame(context, uuid, index) {
 	await updateCellInfo(context);
 }
 
-async function downloadAllFrames(context) {
+async function confirmDownload(context) {
 	if (context["isDownloadingFrames"]) {
+		alert("Cannot start a new download while another is in progress");
 		return;
 	}
 
+	const frameCount = context["simInfo"].frameCount;
+	let startValue = document.getElementById("download-range-start-input").value;
+	let endValue = document.getElementById("download-range-end-input").value;
+
+	if (startValue <= 0 || startValue > frameCount) {
+		alert(`Start value must be between 1 and ${frameCount}`);
+		return;
+	}
+
+	if (endValue <= 0 || endValue > frameCount) {
+		alert(`End value must be between 1 and ${frameCount}`);
+		return;
+	}
+
+	if (endValue < startValue) {
+		const temp = endValue;
+		endValue = startValue;
+		startValue = temp;
+	}
+
+	closeDownloadOptions(context);
+
+	//Start download
 	context["isDownloadingFrames"] = true;
 
+	const downloadCount = endValue - startValue + 1;
+	const downloadFirstIndex = startValue - 1;
 	const uuid = context["simUUID"];
-	const frameCount = context["simInfo"].frameCount;
 	const simName = context["simInfo"].name;
 
 	const finalBlobContainer = new zip.BlobWriter();
 	const zipWriter = new zip.ZipWriter(finalBlobContainer);
 
 	const downloadBtn = document.getElementById("download-btn");
-	downloadBtn.textContent = `0 / ${frameCount} `;	
+	downloadBtn.textContent = `0 / ${downloadCount} `;	
 	downloadBtn.style.pointerEvents = "none";
 
 	let failed = false;
 
-	for (let i = 0; i < frameCount; i++) {
-		const filename = `step-${i + 1}.cm5_step`
+	for (let i = 0; i < downloadCount; i++) {
+		const filename = `step-${downloadFirstIndex + i + 1}.cm5_step`
 		
-		const response = await fetch(`/api/cellstates?uuid=${uuid}&index=${i}`);
+		const response = await fetch(`/api/cellstates?uuid=${uuid}&index=${downloadFirstIndex + i}`);
 		if (!response.ok) {
+			console.log(`Error when downloading step: ${response.status}:${response.statusText}`);
+
 			failed = true;
 			break;
 		}
@@ -153,9 +197,9 @@ async function downloadAllFrames(context) {
 		const cellDataReader = new zip.BlobReader(cellData);
 		await zipWriter.add(filename, cellDataReader);
 
-		downloadBtn.textContent = `${i + 1} / ${frameCount} `;	
+		downloadBtn.textContent = `${i + 1} / ${downloadCount} `;	
 	}
-	
+
 	await zipWriter.close();
 
 	if (failed) {
@@ -486,6 +530,7 @@ async function initFrame(gl, context) {
 	context["frameRequestIndex_Latest"] = 0;
 	context["isMessageLogOpen"] = false;
 	context["isSettingsWindowOpen"] = false;
+	context["isDownloadOptionsWindowOpen"] = false;
 	
 	context["isDownloadingFrames"] = false;
 
@@ -562,17 +607,20 @@ async function initFrame(gl, context) {
 
 	let tempButton = null;
 	document.getElementById("source-btn").onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
-	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { downloadAllFrames(context); };
+	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { toggleDownloadOptions(context); };
 	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(context); };
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
+
+	if (tempButton = document.getElementById("download-options-confirm")) tempButton.onclick = (e) => { confirmDownload(context); };
+	if (tempButton = document.getElementById("download-options-cancel")) tempButton.onclick = (e) => { closeDownloadOptions(context); };
 	
 	document.getElementById("no-cell-outlines").onchange = function(event) { context["renderSettings"]["thinOutlines"] = this.checked; };
 	document.getElementById("signal-density-input").onchange = function(event) { context["renderSettings"]["signalVolumeDensity"] = this.value; };
 	document.getElementById("depth-peel-layers-input").onchange = function(event) { context["renderSettings"]["depthPeeling"]["layerCount"] = Math.max(Math.min(this.value, 64), 1); };
 	document.getElementById("signals-enabled-input").onchange = function(event) { context["renderSettings"]["signalVolumeEnabled"] = this.checked; };
 	document.getElementById("transparency-enabled-input").onchange = function(event) { context["renderSettings"]["depthPeeling"]["enabled"] = this.checked; };
-	
+
 	context["renderSettings"]["signalVolumeDensity"] = document.getElementById("signal-density-input").value;
 	context["renderSettings"]["depthPeeling"]["layerCount"] = document.getElementById("depth-peel-layers-input").value;
 	context["renderSettings"]["signalVolumeEnabled"] = document.getElementById("signals-enabled-input").checked;
