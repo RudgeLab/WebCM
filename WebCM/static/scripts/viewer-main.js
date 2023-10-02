@@ -9,6 +9,10 @@ function setSimFrame(index, frameCount) {
 	document.getElementById("sim-frame").innerHTML = `Frame: ${index} / ${frameCount}`;
 }
 
+function setSimMaxCellCount(cellCount) {
+	document.getElementById("simdets-maxcellcount").innerText = cellCount <= 0 ? "None" : cellCount;
+}
+
 function setStatusMessage(message) {
 	document.getElementById("status-label").innerHTML = `Status: ${message}`;
 }
@@ -266,6 +270,7 @@ function connectToServer(context) {
 				setSimFrame(0, data.frameCount);
 				setStatusMessage("Offline");
 				setSimName(data.name);
+				setSimMaxCellCount(data.maxSimSize);
 
 				await requestShapes(context, context["simUUID"]);
 
