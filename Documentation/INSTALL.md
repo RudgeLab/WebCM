@@ -9,11 +9,11 @@ First, run the following to clone the repository:
 
 	git clone https://github.com/RudgeLab/WebCM.git
 
-You then need to install the required Python packages by running:
+You then need to navigate to the WebCM directory by running `cd WebCM/` and install the required Python packages by running:
 
 	pip install -r requirements.txt
 
-You will also need to create the database used be Django. To do this, navigate to the server's root directory (under `WebCM/`) and run:
+You will also need to create the database used by Django. To do this, navigate to the server's root directory (under `WebCM/`) and run:
 
 	python ./manage.py migrate
 

@@ -42,6 +42,7 @@ class CellModeller4Backend(SimulationBackend):
 	
 	def step(self):
 		self.simulation.step()
+		self.check_simulation_size(len(self.simulation.cellStates))
 	
 	def _find_web_renderer(self):
 		# Deal with older versions of CellModeller that don't have WebRenderer

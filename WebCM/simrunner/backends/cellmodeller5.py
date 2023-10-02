@@ -19,6 +19,8 @@ class CellModeller5Backend(SimulationBackend):
 	def step(self):
 		self.simulator.step()
 
+		# TODO: check_simulation_size
+
 	def write_step_files(self):
 		base_file_name = "step-%05i" % self.simulator.get_step_index()
 

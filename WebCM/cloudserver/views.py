@@ -354,7 +354,10 @@ def create_new_simulation(request):
 		return HttpResponseBackendError(f"Simulation with name '{sim_name}' already exists");
 
 	# Create the simulation and return its UUID
-	uuid = manager.create_simulation(request.user, sim_name, "", sim_source, sim_backend)
+	user_settings = models.lookup_per_user_settings(request.user)
+	max_size = 0 if user_settings is None else int(user_settings.max_cell_count)
+
+	uuid = manager.create_simulation(request.user, sim_name, "", sim_source, sim_backend, max_size)
 
 	return HttpResponse(str(uuid))
 

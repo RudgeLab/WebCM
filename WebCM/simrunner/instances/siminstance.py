@@ -19,6 +19,7 @@ class _InstanceProcessParams:
 	root_dir = ""
 	source_path = ""
 	backend = ""
+	max_cell_count = 0
 
 # Encoding/decoding with JSON because its (probably) faster than the pickle-ing that
 # Pytohn's pipe (might) be doing
@@ -33,11 +34,12 @@ def decode_pipe_message(message):
 	return (message_key, message_value)
 
 class SimulationInstance:
-	def __init__(self, uuid, version, root_path):
+	def __init__(self, uuid, version, root_path, max_cell_count=0):
 		self.uuid = uuid
 		self.backend_version = version
 		self.root_path = os.path.abspath(root_path)
 		self.is_alive = True
+		self.max_cell_count = max_cell_count
 	
 	def __del__(self):
 		self.close()
@@ -52,6 +54,7 @@ class SimulationInstance:
 		params.root_dir = self.root_path
 		params.source_path = self.get_source_file_path()
 		params.backend = self.backend_version
+		params.max_cell_count = self.max_cell_count
 
 		# The "spawn" context will start a completely new process of the python
 		# interpeter. This is also the only context type that is supported on both
@@ -213,6 +216,7 @@ def instance_control_thread(pipe, instance_params):
 		params.sim_root_dir = instance_params.root_dir
 		params.cache_relative_prefix = "cache"
 		params.cache_dir = os.path.join(params.sim_root_dir, params.cache_relative_prefix)
+		params.max_cell_count = instance_params.max_cell_count
 		
 		index_path = os.path.join(params.sim_root_dir, "index.json")
 
