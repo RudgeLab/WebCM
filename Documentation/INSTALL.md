@@ -35,10 +35,10 @@ To run the server, navigate to the server's root directory and run:
 
 	python ./manage.py runserver
 
-By default, this will start WebCM on `localhost:8000/`. This should **only** be used if you want to quickly launch WebCM for personal use. If you want to deploy WebCM (e.g. in a lab environment), follow the instructions in the [Deploying WebCM](#deploying-webcm) section.
+By default, this will start WebCM on `localhost:8000/`. It is recommended that this is only used to launch WebCM for personal use. If you want to deploy WebCM (e.g. in a lab environment), follow the instructions in the [Deploying WebCM](#deploying-webcm) section.
 
 ## Setting up CellModeller
-
+CellModeller is an optional dependency. If you only want to view existing simulations and not run new ones, then you don't need to install it.
 
 ### Installing PyOpenCL
 
