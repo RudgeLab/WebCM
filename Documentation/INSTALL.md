@@ -52,7 +52,7 @@ More details instructions can be found here: [https://documen.tician.de/pyopencl
 
 After you've installed PyOpenCL, you can install CellModeller.
 
-Start by cloning the repository at [https://github.com/RudgeLab/CellModeller](https://github.com/RudgeLab/CellModeller). Then, navigate to the new directory and just run `python ./setup.py install`. 
+Start by cloning the repository at [https://github.com/RudgeLab/CellModeller](https://github.com/RudgeLab/CellModeller). Then, navigate to the new directory and just run `python ./setup.py install`. Note that CellModeller currently requires Python version 3.10.
 
 ## Deploying WebCM
 WebCM uses `uvicorn` for deployment. To launch WebCM, navigate to the server's root directory (under the `WebCM/` folder) and run:
