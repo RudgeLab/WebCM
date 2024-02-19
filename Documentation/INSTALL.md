@@ -9,11 +9,11 @@ First, run the following to clone the repository:
 
 	git clone https://github.com/RudgeLab/WebCM.git
 
-You then need to install the required Python packages by running:
+You then need to navigate to the WebCM directory by running `cd WebCM/` and install the required Python packages by running:
 
 	pip install -r requirements.txt
 
-You will also need to create the database used be Django. To do this, navigate to the server's root directory (under `WebCM/`) and run:
+You will also need to create the database used by Django. To do this, navigate to the server's root directory (under `WebCM/`) and run:
 
 	python ./manage.py migrate
 
@@ -35,10 +35,10 @@ To run the server, navigate to the server's root directory and run:
 
 	python ./manage.py runserver
 
-By default, this will start WebCM on `localhost:8000/`. This should **only** be used if you want to quickly launch WebCM for personal use. If you want to deploy WebCM (e.g. in a lab environment), follow the instructions in the [Deploying WebCM](#deploying-webcm) section.
+By default, this will start WebCM on `localhost:8000/`. It is recommended that this is only used to launch WebCM for personal use. If you want to deploy WebCM (e.g. in a lab environment), follow the instructions in the [Deploying WebCM](#deploying-webcm) section.
 
 ## Setting up CellModeller
-
+CellModeller is an optional dependency. If you only want to view existing simulations and not run new ones, then you don't need to install it.
 
 ### Installing PyOpenCL
 
@@ -52,7 +52,7 @@ More details instructions can be found here: [https://documen.tician.de/pyopencl
 
 After you've installed PyOpenCL, you can install CellModeller.
 
-Start by cloning the repository at [https://github.com/RudgeLab/CellModeller](https://github.com/RudgeLab/CellModeller). Then, navigate to the new directory and just run `python ./setup.py install`. 
+Start by cloning the repository at [https://github.com/RudgeLab/CellModeller](https://github.com/RudgeLab/CellModeller). Then, navigate to the new directory and just run `python ./setup.py install`. Note that CellModeller currently requires Python version 3.10.
 
 ## Deploying WebCM
 WebCM uses `uvicorn` for deployment. To launch WebCM, navigate to the server's root directory (under the `WebCM/` folder) and run:

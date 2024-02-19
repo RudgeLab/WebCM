@@ -74,6 +74,7 @@ class UserCommsConsumer(WebsocketConsumer):
 		response_data = {
 			"uuid": str(simulation.uuid),
 			"name": simulation.title,
+			"maxSimSize": simulation.max_cell_count,
 			"frameCount": index_data["num_frames"],
 			"isOnline": is_online,
 			"crashMessage": index_data["crash_message"] if index_data.get("has_crashed") else None

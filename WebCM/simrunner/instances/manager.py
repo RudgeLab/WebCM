@@ -13,17 +13,19 @@ from uuid import UUID
 global__active_instances = {}
 global__instance_lock = threading.Lock()
 
-def create_simulation(user, sim_title, sim_desc, sim_source, sim_version):
+def create_simulation(user, sim_title, sim_desc, sim_source, sim_version, sim_max_size):
 	global global__active_instances
 	global global__instance_lock
 
-	sim_entry = archiver.register_simulation(user, sim_title, sim_desc)
+	assert type(sim_max_size) is int
+
+	sim_entry = archiver.register_simulation(user, sim_title, sim_desc, sim_max_size)
 	sim_uuid = sim_entry.uuid
 
 	with global__instance_lock:
 		archiver.write_sim_source_to_location(sim_entry.save_location, sim_source)
 
-		sim_instance = SimulationInstance(sim_uuid, sim_version, sim_entry.save_location)
+		sim_instance = SimulationInstance(sim_uuid, sim_version, sim_entry.save_location, sim_max_size)
 		sim_instance.launch()
 
 		global__active_instances[sim_uuid] = sim_instance
@@ -93,7 +95,7 @@ def resurrect_simulation(uuid):
 	simulation = lookup_simulation(uuid)
 
 	with global__instance_lock:
-		sim_instance = SimulationInstance(uuid, index_data["backend_version"], simulation.save_location)
+		sim_instance = SimulationInstance(uuid, index_data["backend_version"], simulation.save_location, simulation.max_cell_count)
 		sim_instance.launch()
 
 		global__active_instances[uuid] = sim_instance

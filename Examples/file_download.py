@@ -32,6 +32,8 @@ def check_response(r):
 	return r
 
 def main():
+	# These are just placeholder values. You need to replace them with the username and
+	# password of the user you want to log in as.
 	username = "admin"
 	password = "password123"
 

@@ -5,6 +5,7 @@ class BackendParameters:
 		self.name = ""
 		self.source = ""
 		self.delta_time = 0.05
+		self.max_cell_count = 0
 
 		self.sim_root_dir = None
 		self.cache_dir = None
@@ -23,7 +24,13 @@ class SimulationBackend:
 
 	def step(self):
 		pass
-	
+
+	def check_simulation_size(self, size):
+		max_size = self.params.max_cell_count
+
+		if max_size > 0 and size > max_size:
+			raise Exception(f"Simulation (cell count={size}) exceeded max simulation size ({max_size})")
+
 	def get_shape_list(self):
 		return []
 

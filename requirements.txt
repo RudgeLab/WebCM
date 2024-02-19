@@ -4,3 +4,4 @@ channels
 msgpack
 numpy
 uvicorn[standard]
+djangorestframework

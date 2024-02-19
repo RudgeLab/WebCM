@@ -18,7 +18,7 @@ def initialize_save_archiver():
 	# Create the root directory
 	pathlib.Path(global__archiver.archive_root).mkdir(parents=False, exist_ok=True)
 
-def register_simulation(user, sim_title, sim_desc):
+def register_simulation(user, sim_title, sim_desc, sim_max_size):
 	# We don't want to import this globally because it causes problems
 	# when the archiver is imported from the simulation instance process
 	from cloudserver.models import SimulationEntry
@@ -28,7 +28,7 @@ def register_simulation(user, sim_title, sim_desc):
 	sim_uuid = uuid4()
 	save_dir = os.path.join(global__archiver.archive_root, "simulation_" + str(sim_uuid))
 
-	entry = SimulationEntry(owner=user, title=sim_title, description=sim_desc, uuid=sim_uuid, save_location=save_dir)
+	entry = SimulationEntry(owner=user, title=sim_title, description=sim_desc, uuid=sim_uuid, save_location=save_dir, max_cell_count=sim_max_size)
 	entry.save()
 
 	os.mkdir(save_dir)
