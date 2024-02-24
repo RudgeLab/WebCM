@@ -21,15 +21,17 @@ function setButtonContainerDisplay(display) {
 	document.getElementById("button-container").style.display = display;
 }
 
-function showSettings(context) {
-	document.getElementById("settings-container").style.display = "inline";
+/****** Dialog windows ******/
 
+function showSettings(context) {
+	closeDownloadOptions(context);
+
+	document.getElementById("settings-container").style.display = "inline";
 	context["isSettingsWindowOpen"] = true;
 }
 
 function closeSettings(context) {
 	document.getElementById("settings-container").style.display = "none";
-
 	context["isSettingsWindowOpen"] = false;
 }
 
@@ -39,14 +41,14 @@ function toggleSettings(context) {
 }
 
 function showDownloadOptions(context) {
-	document.getElementById("download-options-container").style.display = "inline";
+	closeSettings(context);
 
+	document.getElementById("download-options-container").style.display = "inline";
 	context["isDownloadOptionsWindowOpen"] = true;
 }
 
 function closeDownloadOptions(context) {
 	document.getElementById("download-options-container").style.display = "none";
-
 	context["isDownloadOptionsWindowOpen"] = false;
 }
 
@@ -57,6 +59,9 @@ function toggleDownloadOptions(context) {
 
 /****** Init log ******/
 function openInitLogWindow(context, title) {
+	closeSettings(context);
+	closeDownloadOptions(context);
+
 	document.getElementById("message-log-title").innerText = title;
 	document.getElementById("message-log-container").style.display = "inline";
 
@@ -75,12 +80,13 @@ function closeInitLogWindow(context, clear) {
 
 function writeInitLogMessage(message) {
 	var textArea = document.getElementById("message-log-text");
-
-	/*if (textArea.value.length > 0) {
-		textArea.value += "\n";
-	}*/
-
 	textArea.value = message;
+	textArea.scrollTop = textArea.scrollHeight;
+}
+
+function appendInitLogMessage(message) {
+	var textArea = document.getElementById("message-log-text");
+	textArea.value += message;
 	textArea.scrollTop = textArea.scrollHeight;
 }
 
@@ -231,15 +237,37 @@ async function confirmDownload(context) {
 }
 
 function connectToSimulation(context, uuid) {
-	connectToServer(context)
-		.then((socket) => { socket.send(JSON.stringify({ "action": "connectto", "data": `${uuid}` })); });
+	return connectToServer(context)
+		.then((socket) => { socket.send(JSON.stringify({ "action": "connectto", "data": `${uuid}` })); })
+		.catch(() => {
+			openInitLogWindow(context, "Connection Error");
+			writeInitLogMessage("Failed to connect to server\n");
+			appendInitLogMessage("(Check your browser's developer console for more details)");
+		});
+}
+
+function initializeRenderer(gl, context) {
+	return render.init(gl, context)
+		.catch((err) => {
+			openInitLogWindow(context, "Renderer Error");
+			writeInitLogMessage("An error occured when initializing the renderer\n");
+
+			console.log(err);
+		});
 }
 
 function connectToServer(context) {
 	return new Promise((resolve, reject) => {
 		setStatusMessage("Connecting");
 
-		let commsSocket = new WebSocket(`ws://${window.location.host}/ws/usercomms/`);
+		let commsSocket = null;
+
+		try {
+			commsSocket = new WebSocket(`ws://${window.location.host}/ws/usercomms/`);
+		} catch (err) {
+			reject(err);
+			return;
+		}
 		
 		commsSocket.onopen = function(e) {
 			setStatusMessage("Connected");
@@ -632,7 +660,7 @@ async function initFrame(gl, context) {
 	context["renderSettings"]["depthPeeling"]["enabled"] = document.getElementById("transparency-enabled-input").checked;
 
 	//Initialize the renderer
-	await render.init(gl, context);
+	await initializeRenderer(gl, context);
 	await connectToSimulation(context, uuid);
 }
 

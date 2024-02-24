@@ -373,7 +373,7 @@ async function fetchOrThrow(resource, options=null) {
 	const response = options !== null ? (await fetch(resource, options)) : (await fetch(resource));
 
 	if (!response.ok) throw `Reqeuset to ${resource} failed with status ${response.status}`;
-	else return response
+	else return response;
 }
 
 function createColorVolume(gl, context, origin, cellCount, cellSize, volumeData) {
