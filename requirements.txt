@@ -1,7 +1,7 @@
-django
-daphne
-channels
-msgpack
-numpy
-uvicorn[standard]
-djangorestframework
+django==4.2
+daphne==4.0.0
+channels==4.0.0
+msgpack==1.0.5
+numpy==1.24.2
+uvicorn[standard]==0.21.1
+djangorestframework==3.14.0
