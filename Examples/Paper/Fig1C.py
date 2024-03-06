@@ -5,10 +5,11 @@ from CellModeller.GUI.WebRenderer import WebRenderer
 import numpy
 import math
 
+max_cells = 37000
 
 def setup(sim):
     # Set biophysics, signalling, and regulation models
-    biophys = CLBacterium(sim, jitter_z=True, max_planes=2, max_cells=100000)
+    biophys = CLBacterium(sim, jitter_z=True, max_planes=2, max_cells=max_cells)
 
     regul = ModuleRegulator(sim, sim.moduleName)	# use this file for reg too
     # Only biophys and regulation

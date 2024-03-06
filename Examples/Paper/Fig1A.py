@@ -8,7 +8,7 @@ import math
 #Import Euler integrator for solving ODE system of chemical species inside the cells
 from CellModeller.Integration.CLEulerIntegrator import CLEulerIntegrator
 
-max_cells = 2**15
+max_cells = 24000
 
 def setup(sim):
     # Set biophysics, signalling, and regulation models
