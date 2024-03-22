@@ -23,7 +23,7 @@ class SourceContentEntry(models.Model):
 	def __str__(self):
 		return f"(Source: {self.uuid}, {self.owner})"
 
-class PerUserSettings(models.Model):
+class PerUserSetting(models.Model):
 	owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True)
 	max_cell_count = models.IntegerField(default=0)
 
@@ -60,6 +60,6 @@ def lookup_source_content_by_name(name):
 
 def lookup_per_user_settings(user):
 	try:
-		return PerUserSettings.objects.get(owner=user)
-	except (PerUserSettings.DoesNotExist, PerUserSettings.MultipleObjectsReturned):
+		return PerUserSetting.objects.get(owner=user)
+	except (PerUserSetting.DoesNotExist, PerUserSetting.MultipleObjectsReturned):
 		return None
