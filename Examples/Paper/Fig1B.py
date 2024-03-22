@@ -9,7 +9,7 @@ from CellModeller.Integration.CLCrankNicIntegrator import CLCrankNicIntegrator #
 
 from CellModeller.GUI.WebRenderer import WebRenderer
 
-max_cells = 9500
+max_cells = 3000
 
 #Specify parameter for solving diffusion dynamics #Add
 grid_dim = (64, 8, 12) # dimension of diffusion space, unit = number of grid

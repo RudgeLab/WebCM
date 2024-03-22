@@ -44,7 +44,7 @@ CellModeller is an optional dependency. If you only want to view existing simula
 
 CellModeller uses PyOpenCL to run simulation code on the GPU. It is not recommended that you build PyOpenCL manually, as it requires you to have the OpenCL SDK installed. Instead, it is recommended that you use something like Conda Forge to download pre-build packages. 
 
-To do this, start by installing [Miniforge](https://github.com/conda-forge/miniforge/releases/latest/).  Then, open a terminal, activate your conda environment (`root` is the default one) and run `conda install pyopencl`. 
+To do this, start by installing [Miniforge](https://github.com/conda-forge/miniforge/releases/latest/).  Then, open a terminal, activate your conda environment and run `conda install pyopencl`. 
 
 More details instructions can be found here: [https://documen.tician.de/pyopencl/misc.html](https://documen.tician.de/pyopencl/misc.html) (you only really need to read the *"Installing PyOpenCL"* section).
 
