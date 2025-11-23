@@ -109,7 +109,7 @@ async function submitCreateSimulationRequest() {
 
 		const simUUID = await response.text();
 	
-		window.location.href = `/view/${simUUID}/`;
+		window.open(`/view/${simUUID}/`, "_blank");
 	}
 
 	const simName = document.getElementById("input-create-name");
@@ -127,6 +127,7 @@ async function submitCreateSimulationRequest() {
 		
 		const source = await sourceResponse.text();
 		await _create(name, source, version);
+		await refreshSimList();
 	} else {
 		const sourceUpload = document.getElementById("input-upload-file");
 
@@ -158,7 +159,9 @@ async function submitCreateSourceRequest() {
 	}
 
 	const uuid = await response.text();
-	window.location.href = `/edit/${uuid}/`;
+	window.open(`/edit/${uuid}/`, "_blank");
+
+	await refreshSourceList();
 }
 
 async function refreshSimList() {
@@ -185,7 +188,7 @@ async function refreshSimList() {
 	</div>
 	<div class="select-sim-buttons">
 		<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
-		<a class="select-sim-button sim-button-view" href="/view/${sim.uuid}/"><span class="shape-right-arrow"></span></a>
+		<a class="select-sim-button sim-button-view" href="/view/${sim.uuid}/" target="_blank"><span class="shape-right-arrow"></span></a>
 	</div>
 </div>`;
 
@@ -214,7 +217,7 @@ async function refreshSourceList() {
 					</div>
 					<div class="select-sim-buttons">
 						<a class="select-sim-button sim-button-other"><span class="shape-cross"></span></a>
-						<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/"><span class="shape-right-arrow"></span></a>
+						<a class="select-sim-button sim-button-view" href="/edit/${src.uuid}/" target="_blank"><span class="shape-right-arrow"></span></a>
 					</div>
 				</div>`;
 	
