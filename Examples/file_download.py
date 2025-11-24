@@ -69,7 +69,7 @@ def main():
 	print(f"    Name: {sim_header['name']}")
 	print(f"    UUID: {sim_header['uuid']}")
 	print(f"    Frame count: {sim_header['frameCount']}")
-	print(f"    Is Online: {sim_header['isOnline']}")
+	print(f"    Is Online: {sim_header['status'] != 'offline'}")
 	
 	# Get the cell states
 	frame_count = int(sim_header['frameCount'])
