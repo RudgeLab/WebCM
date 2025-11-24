@@ -40,14 +40,3 @@ def send_message_to_websocket_group(group_name: str, message):
 
 		for client in group:
 			client.send_client_message(message)
-
-def close_websocket_group(group_name: str, close_code=None, close_message=None):
-	global global__ws_groups
-	global global__ws_group_lock
-
-	with global__ws_group_lock:
-		group = global__ws_groups.get(group_name, None)
-		if group is None: return
-		
-	for client in group:
-		client.on_websocket_group_closed()

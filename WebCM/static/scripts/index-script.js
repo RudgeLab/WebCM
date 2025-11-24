@@ -177,7 +177,7 @@ async function refreshSimList() {
 	}
 
 	for (let sim of simList) {
-		const statusText = sim.isOnline ? "Online" : "Offline";
+		const statusText = sim.status == "offline" ? "Offline" : "Online";
 
 		const item = document.createElement("div");
 		item.innerHTML = 

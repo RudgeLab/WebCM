@@ -8,7 +8,6 @@ class SimulationEntry(models.Model):
 	title = models.TextField(unique=True)
 	description = models.TextField()
 	uuid = models.UUIDField(default=uuid.uuid4, editable=True)
-	save_location = models.TextField()
 	max_cell_count = models.IntegerField(default=0)
 
 	def __str__(self):

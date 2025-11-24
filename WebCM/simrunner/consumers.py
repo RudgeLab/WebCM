@@ -10,6 +10,7 @@ from simrunner.instances import manager
 from uuid import UUID
 
 import json
+import traceback
 
 class UserCommsConsumer(WebsocketConsumer):
 	def __init__(self, *args, **kwargs):
@@ -21,77 +22,78 @@ class UserCommsConsumer(WebsocketConsumer):
 		self.accept()
 
 	def receive(self, text_data):
-		msg_data = json.loads(text_data)
+		try: 
+			msg_data = json.loads(text_data)
+			msg_action  = msg_data["action"]
+			msg_payload = msg_data["data"]
+
+			if False: pass # This exists for formatting reasons
+			elif msg_action == "connectto": self.handle_connectto(msg_payload)
+			elif msg_action == "start": self.handle_start()
+			elif msg_action == "stop": self.handle_stop()
+			elif msg_action == "pause": self.handle_pause()
+			elif msg_action == "reload": self.handle_reload()
+		except Exception:
+			self.send_message("error_message", f"Exception occured in websocket connection handler:\n{traceback.format_exc()}")
 		
-		if msg_data["action"] == "connectto":
-			uuid = UUID(msg_data["data"])
-
-			if not lookup_simulation(uuid) is None:
-				if not self.sim_uuid == None:
-					wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
-
-				self.sim_uuid = uuid
-
-				wsgroups.add_websocket_to_group(f"simcomms/{self.sim_uuid}", self)
-
-				self.send_sim_header()
-			else:
-				# The UUID provided does not match any simulation, either online or offline
-				self.close(code=4101)
-		elif msg_data["action"] == "getheader":
-			self.send_sim_header()
-		elif msg_data["action"] == "stop":
-			manager.kill_simulation(self.sim_uuid)
-		elif msg_data["action"] == "reload":
-			if self.is_reloading:
-				return
-			
-			self.is_reloading = True
-			cold_restart = self.handle_reload_action()
-			self.is_reloading = False
-
-			if cold_restart:
-				self.send_sim_header()
-
 		return
 	
 	def disconnect(self, close_code):
 		wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
+	
+	##
+	## Request handlers
+	##
 
-	def handle_reload_action(self):
-		if manager.is_simulation_running(self.sim_uuid):
-			manager.reload_simulation(self.sim_uuid)
-			return False
-		else:
-			manager.resurrect_simulation(self.sim_uuid)
-			return True
+	def handle_connectto(self, data):
+		uuid = UUID(data)
 
-	def send_sim_header(self):
+		if lookup_simulation(uuid) is None:
+			self.close(code=4101)
+			return
+
+		if not self.sim_uuid == None:
+			wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
+
+		wsgroups.add_websocket_to_group(f"simcomms/{uuid}", self)
+		self.sim_uuid = uuid
+
+		# Send simulation information to the client
 		simulation = lookup_simulation(self.sim_uuid)
 		index_data = archiver.get_instance_index_data(self.sim_uuid)
-		is_online = manager.is_simulation_running(self.sim_uuid)
+		status = manager.get_simulation_status(self.sim_uuid)
 
 		response_data = {
 			"uuid": str(simulation.uuid),
 			"name": simulation.title,
 			"maxSimSize": simulation.max_cell_count,
+
+			"status": status,
+
 			"frameCount": index_data["num_frames"],
-			"isOnline": is_online,
 			"crashMessage": index_data["crash_message"] if index_data.get("has_crashed") else None
 		}
 
-		self.send_message_data("simheader", response_data)
+		self.send_message("connectheader", response_data)
+
+	def handle_start(self):
+		manager.continue_simulation(self.sim_uuid)
+	
+	def handle_pause(self):
+		manager.pause_simulation(self.sim_uuid)
+		
+	def handle_stop(self):
+		manager.kill_simulation(self.sim_uuid)
+
+	def handle_reload(self):
+		manager.reload_simulation(self.sim_uuid)
 
 	def send_client_message(self, message):
-		if type(message) == clientmessages.NewFrame:
-			self.send_message_data("newframe", { "frameCount": message.frame_count })
-		elif type(message) == clientmessages.NewShape:
-			self.send_message_data("newshape", "")
-		elif type(message) == clientmessages.ErrorMessage:
-			self.send_message_data("error_message", message.message)
+		if False: pass
+		elif type(message) == clientmessages.NewFrame: self.send_message("newframe", { "frameCount": message.frame_count })
+		elif type(message) == clientmessages.NewShape: self.send_message("newshape", "")
+		elif type(message) == clientmessages.Status:   self.send_message("status_change", message.status)
+		elif type(message) == clientmessages.ErrorMessage: self.send_message("error_message", message.message)
 
-	def send_message_data(self, action, data):
+	def send_message(self, action, data):
 		self.send(text_data=json.dumps({ "action": action, "data": data }))
-
-	def on_websocket_group_closed(self):
-		self.send_message_data("simstopped", "")

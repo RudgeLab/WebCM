@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import threading
 import traceback
 import json
 import sys, os
@@ -40,11 +41,14 @@ class SimulationInstance:
 		self.root_path = os.path.abspath(root_path)
 		self.is_alive = True
 		self.max_cell_count = max_cell_count
+		self.current_status = "launching"
 	
 	def __del__(self):
 		self.close()
 
 	def launch(self):
+		self.send_message_to_clients(clientmessages.Status(self.current_status))
+
 		# Setup the simulation directory
 		index_data = archiver.write_empty_index_file(os.path.join(self.root_path, "index.json"), self.backend_version)
 		archiver.update_instance_index(self.uuid, index_data)
@@ -92,6 +96,9 @@ class SimulationInstance:
 			archiver.update_instance_index(self.uuid, data["new_data"])
 			
 			self.send_message_to_clients(clientmessages.ErrorMessage(data["new_data"]["crash_message"]))
+		elif action == "status":
+			self.current_status = data
+			self.send_message_to_clients(clientmessages.Status(self.current_status))
 		elif action == "close":
 			self._cleanup()
 
@@ -109,18 +116,12 @@ class SimulationInstance:
 		return os.path.join(self.root_path, "source.py")
 
 	def _cleanup(self):
-		if not self.is_alive:
-			return
-
-		wsgroups.close_websocket_group(f"simcomms/{self.uuid}")
-
 		self.is_alive = False
 
 	def on_endpoint_closed(self):
-		self._cleanup()
-
 		self.pipes[0].close()
 		self.pipes[1].close()
+		self._cleanup()
 		
 		# I don't think joining the child process would be a good idea because it might take a long time
 		# for it to actually shutdown (when simulation steps get long)
@@ -131,6 +132,12 @@ class SimulationInstance:
 	def reload_simulation(self):
 		self.send_message_to_instance({ "reload": "" })
 
+	def pause_simulation(self):
+		self.send_message_to_instance({ "pause": "" })
+
+	def continue_simulation(self):
+		self.send_message_to_instance({ "continue": "" })
+
 	def close(self):
 		if not self.is_alive:
 			return
@@ -138,8 +145,11 @@ class SimulationInstance:
 		self.send_message_to_instance({ "stop": "" })
 		self._cleanup()
 
-	def is_closed(self):
-		return not self.is_alive
+	def is_running(self):
+		return self.is_alive
+	
+	def get_status_str(self):
+		return self.current_status
 
 def create_instance_from_name(backend_name, params):
 	if backend_name == "CellModeller5":
@@ -173,8 +183,10 @@ def instance_control_thread(pipe, instance_params):
 		sys.stdout = log_stream
 		sys.stderr = log_stream
 
-	running = True
+	is_running = True
 	needs_reload = False
+	paused_event = threading.Event()
+	paused_event.set()
 
 	def endpoint_callback():
 		# We don't have any endpoint-related resources to clean up, but there is no point in
@@ -182,18 +194,25 @@ def instance_control_thread(pipe, instance_params):
 		# simulation.
 		# This may be gratuitous since if the simulation process is shut down properly, it would 
 		# have already sent a close message, but its better to be safe than sorry
-		nonlocal running
-		running = False
+		nonlocal is_running
+		is_running = False
 
 	def recv_message_from_control(message):
 		(action, data) = decode_pipe_message(message)
 
+		nonlocal is_running
+		nonlocal needs_reload
+		nonlocal paused_event
+
 		if action == "stop":
-			nonlocal running
-			running = False
+			is_running = False
 		elif action == "reload":
-			nonlocal needs_reload
 			needs_reload = True
+			paused_event.set()
+		elif action == "pause":
+			paused_event.clear()
+		elif action == "continue":
+			paused_event.set()
 
 	endpoint = DuplexPipeEndpoint(pipe, recv_message_from_control, endpoint_callback)
 	endpoint.start()
@@ -233,8 +252,9 @@ def instance_control_thread(pipe, instance_params):
 			index_data = archiver.write_shapes_to_sim_index(index_path, backend.get_shape_list())
 			
 			send_message_to_control({ "newshape": { "new_data": index_data } })
+			send_message_to_control({ "status": "running" })
 
-			while running and backend.is_running() and not needs_reload:
+			while is_running and backend.is_running() and not needs_reload:
 				# Take another step in the simulation
 				backend.step()
 
@@ -256,14 +276,21 @@ def instance_control_thread(pipe, instance_params):
 				sys.stdout.flush()
 				sys.stderr.flush()
 
+				# Wait on the 'paused' event if its set
+				if not paused_event.is_set():
+					send_message_to_control({ "status": "paused" })
+					paused_event.wait()
+					send_message_to_control({ "status": "running" })
+
 			backend.shutdown()
 
 			# Handle simulation reload
 			if needs_reload:
 				needs_reload = False
 
-				index_data = archiver.write_empty_index_file(index_path, instance_params.backend)
+				send_message_to_control({ "status": "reloading" })
 
+				index_data = archiver.write_empty_index_file(index_path, instance_params.backend)
 				send_message_to_control({ "newframe": { "frame_count": 0, "new_data": index_data } })
 
 				continue
@@ -282,6 +309,8 @@ def instance_control_thread(pipe, instance_params):
 		send_message_to_control({ "error_message": { "new_data": index_data } })
 		send_message_to_control({ "close": { "abrupt": True } })
 	finally:
+		send_message_to_control({ "status": "offline" })
+
 		endpoint.shutdown()
 
 	if redirect_io_to_file:

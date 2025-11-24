@@ -30,10 +30,10 @@ class HttpResponseBackendError(HttpResponse):
 		self._has_been_logged = True
 
 class PassthroughParser(BaseParser):
-    media_type = '*/*'
+	media_type = '*/*'
 
-    def parse(self, stream, media_type=None, parser_context=None):
-        return stream
+	def parse(self, stream, media_type=None, parser_context=None):
+		return stream
 
 def authenticate_view(view_params):
 	def decorator(func):
@@ -47,14 +47,6 @@ def response_no_cache(response):
 	response["Cache-Control"] = "no-store"
 
 	return response
-
-	def __init__(self, *args, **kwargs):
-		super().__init__(args, kwargs)
-
-		# Django prints an extra error message when logging responses that have a status code >= 400. I don't like that.
-		# Django uses `_has_been_logged` in django.utils.log.log_response to check if it should log the response or not.
-		# This doesn't seem to be used anywhere else, so I think its ok if we set it here
-		self._has_been_logged = True
 
 # ####### Pages #######
 
@@ -80,8 +72,7 @@ def viewer(request, sim_uuid):
 	with open("static/viewer.html", "r") as index_file:
 		index_data = index_file.read()
 
-	is_online = manager.is_simulation_running(UUID(sim_uuid))
-	context = RequestContext(request, { "simulation_uuid": sim_uuid, "is_online": is_online })
+	context = RequestContext(request, { "simulation_uuid": sim_uuid })
 	content = Template(index_data).render(context)
 
 	return HttpResponse(content)
@@ -104,14 +95,12 @@ def editor(request, src_uuid):
 	with open("static/editor.html", "r") as index_file:
 		index_data = index_file.read()
 
-	is_online = from_source_file or manager.is_simulation_running(uuid_val)
-
 	if from_source_file:
 		page_title = f"{as_source_file.name} - Source file"
 	else:
 		page_title = f"{as_simulation.title} - Simulation source"
 
-	context = RequestContext(request, { "source_uuid": src_uuid, "is_online": is_online, "page_title": page_title })
+	context = RequestContext(request, { "source_uuid": src_uuid, "page_title": page_title })
 	content = Template(index_data).render(context)
 
 	return HttpResponse(content)
@@ -141,13 +130,13 @@ def sim_header(request):
 	sim_id = UUID(request.GET["uuid"])
 	simulation = models.lookup_simulation(sim_id)
 	index_data = archiver.get_instance_index_data(sim_id)
-	is_online = manager.is_simulation_running(sim_id)
+	status = manager.get_simulation_status(sim_id)
 
 	response_content = json.dumps({
 		"uuid": str(simulation.uuid),
 		"name": simulation.title,
 		"frameCount": index_data["num_frames"],
-		"isOnline": is_online,
+		"status": status,
 		"crashMessage": index_data["crash_message"] if index_data.get("has_crashed") else None
 	})
 
@@ -243,8 +232,9 @@ def list_owned_simulations(request):
 
 	response_content = []
 	for sim in entries:
-		is_online = manager.is_simulation_running(sim.uuid)
-		response_content.append({ "uuid": str(sim.uuid), "title": sim.title, "desc": sim.description, "isOnline": is_online })
+		status = manager.get_simulation_status(sim.uuid)
+
+		response_content.append({ "uuid": str(sim.uuid), "title": sim.title, "desc": sim.description, "status": status })
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
 
@@ -360,20 +350,6 @@ def create_new_simulation(request):
 	uuid = manager.create_simulation(request.user, sim_name, "", sim_source, sim_backend, max_size)
 
 	return HttpResponse(str(uuid))
-
-@authenticate_view(["GET"])
-def stop_simulation(request):
-	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
-	
-	sim_id = UUID(request.GET["uuid"])
-
-	if models.lookup_simulation(sim_id) is None:
-		return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
-	
-	manager.kill_simulation(sim_id)
-
-	return HttpResponse()
 
 @authenticate_view(["GET"])
 def delete_simulation(request):

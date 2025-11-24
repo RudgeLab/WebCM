@@ -26,25 +26,27 @@ def register_simulation(user, sim_title, sim_desc, sim_max_size):
 	global global__archiver
 
 	sim_uuid = uuid4()
-	save_dir = os.path.join(global__archiver.archive_root, "simulation_" + str(sim_uuid))
+	save_dir = get_simulation_location(sim_uuid)
 
-	entry = SimulationEntry(owner=user, title=sim_title, description=sim_desc, uuid=sim_uuid, save_location=save_dir, max_cell_count=sim_max_size)
+	entry = SimulationEntry(owner=user, title=sim_title, description=sim_desc, uuid=sim_uuid, max_cell_count=sim_max_size)
 	entry.save()
 
 	os.mkdir(save_dir)
 	os.mkdir(os.path.join(save_dir, "cache"))
 
-	return entry
+	return sim_uuid
 
 def remove_simulation(sim_uuid):
 	global global__archiver
 
 	entry = __get_simulation(sim_uuid)
-	dir_path = entry.save_location
-
 	entry.delete()
 
-	shutil.rmtree(dir_path)
+	save_dir = get_simulation_location(sim_uuid)
+	shutil.rmtree(save_dir)
+
+def get_simulation_location(uuid):
+	return os.path.join(global__archiver.archive_root, "simulation_" + str(uuid))
 
 def update_instance_index(uuid, data):
 	global global__archiver
@@ -60,29 +62,27 @@ def get_instance_index_data(uuid):
 	global global__archiver
 
 	if not uuid in global__archiver.sim_data:
-		sim = __get_simulation(uuid)
-		if sim is None: return None
-
-		index_path = os.path.join(sim.save_location, "index.json")
+		save_dir = get_simulation_location(uuid)
+		index_path = os.path.join(save_dir, "index.json")
 
 		with open(index_path, "r") as index_file:
 			index_data = json.loads(index_file.read())
 
-		global__archiver.sim_data[sim.uuid] = index_data
+		global__archiver.sim_data[uuid] = index_data
 
 		return index_data
 	else:
 		return global__archiver.sim_data.get(uuid, None)
 
 def get_simulation_step_files(uuid, index):
-	simulation = __get_simulation(uuid)
-	if simulation is None: return None
-
+	save_dir = get_simulation_location(uuid)
 	index_data = get_instance_index_data(uuid)
-	if index_data["num_frames"] <= int(index): return None
 
-	step_frame = os.path.join(simulation.save_location, index_data["stepframes"][index])
-	viz_frame = os.path.join(simulation.save_location, index_data["vizframes"][index])
+	if index_data["num_frames"] <= int(index):
+		return None
+
+	step_frame = os.path.join(save_dir, index_data["stepframes"][index])
+	viz_frame = os.path.join(save_dir, index_data["vizframes"][index])
 
 	return (step_frame, viz_frame)
 
@@ -157,12 +157,12 @@ def write_sim_source_to_location(location, source_content):
 		source_file.write(source_content.encode("utf-8"))
 
 def read_simulation_source(uuid):
-	simulation = __get_simulation(uuid)
-	return read_sim_source_from_location(simulation.save_location)
+	save_dir = get_simulation_location(uuid)
+	return read_sim_source_from_location(save_dir)
 
 def write_simulation_source(uuid, source_content):
-	simulation = __get_simulation(uuid)
-	write_sim_source_to_location(simulation.save_location, source_content)
+	save_dir = get_simulation_location(uuid)
+	write_sim_source_to_location(save_dir, source_content)
 
 def __get_simulation(id):
 	from cloudserver.models import lookup_simulation

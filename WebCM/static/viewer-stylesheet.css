@@ -92,11 +92,18 @@ html, body {
 
 #button-container {
 	position: fixed;
-	width: 8rem;
+	width: 15rem;
 	bottom: 0;
 	left: 0;
 
 	padding: 0.3rem;
+
+	display: flex;
+	flex-direction: row;
+}
+
+#button-container div {
+	flex: 1;
 }
 
 .cursor-pointer {

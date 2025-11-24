@@ -47,7 +47,6 @@ urlpatterns = [
     path("api/setsrccontent", views.set_source_content),
 
     path("api/createnewsimulation", views.create_new_simulation),
-    path("api/stopsimulation", views.stop_simulation),
     path("api/deletesimulation", views.delete_simulation),
 
     path("api/userauth/", include("userauth.urls")),

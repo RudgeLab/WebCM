@@ -17,8 +17,12 @@ function setStatusMessage(message) {
 	document.getElementById("status-label").innerHTML = `Status: ${message}`;
 }
 
-function setButtonContainerDisplay(display) {
-	document.getElementById("button-container").style.display = display;
+function setStatusFromServer(message) {
+	if (message == "launching") setStatusMessage("Launching");
+	else if (message == "offline") setStatusMessage("Offline");
+	else if (message == "running") setStatusMessage("Running");
+	else if (message == "paused") setStatusMessage("Paused");
+	else if (message == "reloading") setStatusMessage("Reloading");
 }
 
 /****** Dialog windows ******/
@@ -270,7 +274,6 @@ function connectToServer(context) {
 		}
 		
 		commsSocket.onopen = function(e) {
-			setStatusMessage("Connected");
 			resolve(commsSocket);
 		};
 
@@ -284,31 +287,25 @@ function connectToServer(context) {
 			const action = message["action"];
 			const data = message["data"];
 
-			if (action === "simheader") {
+			if (action === "connectheader") {
 				context["simUUID"] = data["uuid"];
 
 				context["simInfo"] = {};
 				context["simInfo"].name = data.name;
 				context["simInfo"].frameIndex = 0;
 				context["simInfo"].frameCount = data.frameCount;
-				context["simInfo"].isOnline = data.isOnline;
 
 				context["timelineSlider"].max = data.frameCount;
 
 				setSimFrame(0, data.frameCount);
-				setStatusMessage("Offline");
 				setSimName(data.name);
 				setSimMaxCellCount(data.maxSimSize);
+				setStatusFromServer(data.status);
 
 				await requestShapes(context, context["simUUID"]);
 
 				if (data.frameCount > 0) {
 					await requestFrame(context, context["simUUID"], context["simInfo"].frameIndex);
-				}
-
-				if (data.isOnline) {
-					setButtonContainerDisplay("block");
-					setStatusMessage("Running");
 				}
 
 				if (data.crashMessage) {
@@ -333,6 +330,8 @@ function connectToServer(context) {
 			} else if (action === "infolog") {
 				openInitLogWindow(context, "Initialization Log");
 				writeInitLogMessage(data);
+			} else if (action === "status_change") {
+				setStatusFromServer(data);
 			} else if (action === "error_message") {
 				openInitLogWindow(context, "Error Log");
 				writeInitLogMessage(data);
@@ -340,16 +339,11 @@ function connectToServer(context) {
 				setStatusMessage("Fatal Error");
 			} else if (action === "closeinfolog") {
 				closeInitLogWindow(context, true);
-			} else if (action === "simstopped") {
-				setStatusMessage("Terminated");
-			} else if (action === "reloaddone") {
-				commsSocket.send(JSON.stringify({ "action": "connectto", "data": `${data["uuid"]}` }));
 			}
 		};
 		
 		commsSocket.onclose = (e) => {
 			setStatusMessage("Connection Lost");
-
 			context["commsSocket"] = null;
 		};
 
@@ -358,16 +352,35 @@ function connectToServer(context) {
 }
 
 function reloadSimulation(context) {
-	if (context["commsSocket"] !== null) {
-		setStatusMessage("Reloading");
-		closeInitLogWindow(context, true);
+	closeInitLogWindow(context, true);
 
+	if (context["commsSocket"] !== null) {
 		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
 	}
 }
 
+function startSimulation(context) {
+	closeInitLogWindow(context, true);
+
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "start", "data": "" }));
+	}
+}
+
+function pauseSimulation(context) {
+	closeInitLogWindow(context, true);
+
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "pause", "data": "" }));
+	}
+}
+
 function stopSimulation(context) {
-	fetch(`/api/stopsimulation?uuid=${context["simUUID"]}`);
+	closeInitLogWindow(context, true);
+
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "stop", "data": "" }));
+	}
 }
 
 function processTimelineChange(value, context) {
@@ -641,8 +654,10 @@ async function initFrame(gl, context) {
 	let tempButton = null;
 	document.getElementById("source-btn").onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
 	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { toggleDownloadOptions(context); };
-	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(context); };
+	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(context); };	
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
+	if (tempButton = document.getElementById("start-btn")) tempButton.onclick = (e) => { startSimulation(context); };
+	if (tempButton = document.getElementById("pause-btn")) tempButton.onclick = (e) => { pauseSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
 
 	if (tempButton = document.getElementById("download-options-confirm")) tempButton.onclick = (e) => { confirmDownload(context); };
