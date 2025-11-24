@@ -13,9 +13,7 @@ layout(location = 7) in vec4 a_Color;
 
 uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
-
 uniform int u_SelectedIndex;
-uniform int u_ThinOutlines;
 
 out vec3 v_WorldPos;
 out float v_Radius;
@@ -24,7 +22,6 @@ out vec3 v_CellEnd1;
 
 out vec3 v_Color;
 flat out int v_IsSelected;
-flat out int v_ThinOutline;
 
 void main() {
 	//Calculate rotation matrix
@@ -74,5 +71,4 @@ void main() {
 	v_Color = a_Color.xyz;
 	v_Radius = a_Radius;
 	v_IsSelected = int(gl_InstanceID == u_SelectedIndex);
-	v_ThinOutline = u_ThinOutlines;
 }

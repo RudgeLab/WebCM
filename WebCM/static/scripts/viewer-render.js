@@ -417,7 +417,7 @@ export async function init(gl, context) {
 		const cellFragmentSource = await cellFragmentData.text();
 	
 		context["cellShader"] = createShader(gl, cellVertexSource, cellFragmentSource, [
-			"u_ProjectionMatrix", "u_ViewMatrix", "u_SelectedIndex", "u_ThinOutlines"
+			"u_ProjectionMatrix", "u_ViewMatrix", "u_InvViewMatrix", "u_SelectedIndex", "u_ShowOutline", "u_FlatShading"
 		]);
 	};
 
@@ -633,7 +633,7 @@ function drawScene(gl, context) {
 	const camera = context["camera"];
 	const projMatrix = camera["projectionMatrix"];
 	const viewMatrix = camera["viewMatrix"];
-	const cameraPos = camera["position"];
+	const invViewMatrix = mat4.invert(mat4.create(), viewMatrix);
 
 	//Draw grid
 	const gridShader = context["gridShader"];
@@ -656,14 +656,17 @@ function drawScene(gl, context) {
 	//Draw cells
 	const cellShader = context["cellShader"];
 	const bacteriumMesh = context["bacteriumMesh"];
-	const withThinOutline = context["renderSettings"]["thinOutlines"] ? 1 : 0;
+	const showOutline = context["renderSettings"]["showOutlines"] ? 1 : 0;
+	const flatShading = context["renderSettings"]["flatShading"] ? 1 : 0;
 
 	gl.useProgram(cellShader["program"]);
 	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ProjectionMatrix"], false, projMatrix);
 	gl.uniformMatrix4fv(cellShader["uniforms"]["u_ViewMatrix"], false, viewMatrix);
+	gl.uniformMatrix4fv(cellShader["uniforms"]["u_InvViewMatrix"], false, invViewMatrix);
 	
 	gl.uniform1i(cellShader["uniforms"]["u_SelectedIndex"], context["selectedCellIndex"]);
-	gl.uniform1i(cellShader["uniforms"]["u_ThinOutlines"], withThinOutline);
+	gl.uniform1i(cellShader["uniforms"]["u_ShowOutline"], showOutline);
+	gl.uniform1i(cellShader["uniforms"]["u_FlatShading"], flatShading);
 
 	gl.bindVertexArray(bacteriumMesh.vao);
 	gl.drawElementsInstanced(gl.TRIANGLES, bacteriumMesh.indexCount, bacteriumMesh.indexType, 0, context["cellCount"]);
@@ -672,7 +675,7 @@ function drawScene(gl, context) {
 
 function drawShapes(gl, context, shader) {
 	const sphereMesh = context["sphereMesh"];
-	const shapeList = context["renderSettings"]["shapeList"];
+	const shapeList = context["shapeList"];
 
 	for (let i = 0; i < shapeList.length; i++) {
 		const shape = shapeList[i];

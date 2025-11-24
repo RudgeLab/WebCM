@@ -2,7 +2,11 @@
 precision highp float;
 
 uniform mat4 u_ViewMatrix;
+uniform mat4 u_InvViewMatrix;
 uniform mat4 u_ProjectionMatrix;
+
+uniform int u_ShowOutline;
+uniform int u_FlatShading;
 
 in vec3 v_WorldPos;
 in float v_Radius;
@@ -11,7 +15,6 @@ in vec3 v_CellEnd1;
 
 in vec3 v_Color;
 flat in int v_IsSelected;
-flat in int v_ThinOutline;
 
 out vec4 outColor;
 
@@ -100,30 +103,59 @@ float lineSegmentDistance(vec3 a0, vec3 a1, vec3 b0, vec3 b1) {
 	https://bgolus.medium.com/rendering-a-sphere-on-a-quad-13c92025570c
 */
 void main() {
-	vec3 cameraPos = vec3(inverse(u_ViewMatrix) * vec4(0, 0, 0, 1)).xyz;
+	vec3 cameraPos = vec3(u_InvViewMatrix * vec4(0, 0, 0, 1)).xyz;
+	vec3 lightPos  = vec3(u_InvViewMatrix * vec4(-2, 2, 0, 1)).xyz;
+	vec3 rayDir = normalize(v_WorldPos - cameraPos);
 
-	float dist = lineSegmentDistance(cameraPos, v_WorldPos, v_CellEnd0, v_CellEnd1);
-
-	bool selected = v_IsSelected != 0;
-	float outlineThickness = selected ? 0.13 : (v_ThinOutline == 0 ? 0.08 : -0.03);
-
-	vec3 outlineColor = selected ? vec3(0.0) : vec3(1.0);
-	vec3 fillColor = selected ? vec3(1.0, 1.0, 0.0) : v_Color;
-
-	vec3 color = mix(fillColor, outlineColor, smoothstep(v_Radius - outlineThickness - 0.03, v_Radius - outlineThickness, dist));
-
-	if (dist > v_Radius) {
+	float rayDepth = capIntersect(cameraPos, rayDir, v_CellEnd0, v_CellEnd1, v_Radius);
+	if (rayDepth < 0.0) {
 		discard;
 	}
+	
+	vec3 intersectPos = cameraPos + rayDir * rayDepth;
 
-	//There's probably a much more efficient way of doing this
-	vec3 rayDir = normalize(v_WorldPos - cameraPos);
-	float rayDepth = capIntersect(cameraPos, rayDir, v_CellEnd0, v_CellEnd1, v_Radius);
-	vec3 intersectionPos = cameraPos + rayDir * rayDepth;
+	//Compute the base color of the cell
+	bool selected = v_IsSelected != 0;
+	
+	float outlineWidth = selected ? 0.13 : 0.08;
+	vec3  outlineColor = selected ? vec3(0.0) : vec3(1.0);
+	vec3  fillColor    = selected ? vec3(1.0, 1.0, 0.0) : v_Color;
 
-	vec4 clipPos = u_ProjectionMatrix * u_ViewMatrix * vec4(intersectionPos, 1.0);
+	vec3 color = fillColor;
+
+	if (u_ShowOutline != 0 || selected) {
+		float dist  = lineSegmentDistance(cameraPos, v_WorldPos, v_CellEnd0, v_CellEnd1);
+		float blend = smoothstep(v_Radius - outlineWidth - 0.03, v_Radius - outlineWidth, dist);
+
+		color = mix(fillColor, outlineColor, blend);
+	}
+
+	//Compute the lighting of the cell
+	vec3 light = color;
+
+	if (u_FlatShading == 0 && !selected)  {
+		vec3 a = v_CellEnd1 - v_CellEnd0;
+		vec3 b = intersectPos - v_CellEnd0;
+		vec3 c = clamp(dot(a, b) / dot(a, a), 0.0, 1.0) * a + v_CellEnd0;
+
+		vec3 normal = normalize(intersectPos - c);
+		vec3 lightDir = normalize(lightPos - intersectPos);
+
+		float diffuseFactor = pow(max(dot(normal, lightDir), 0.0), 4.0);
+		float specularFactor = pow(max(dot(normal, lightDir), 0.0), 32.0);
+
+		float ambient = 0.4;
+		float diffuse = 0.5 * diffuseFactor;
+		float specular = 0.5 * specularFactor;
+
+		light = color * (ambient + diffuse) + vec3(specular);
+	}
+
+	//Compute new capsule depth
+	// (There's probably a much more efficient way of doing this)
+	vec4 clipPos = u_ProjectionMatrix * u_ViewMatrix * vec4(intersectPos, 1.0);
 	float clipDepth = clipPos.z / clipPos.w;
 	gl_FragDepth = 0.5 * clipDepth + 0.5;
 
-	outColor = vec4(color, 1);
+	outColor = vec4(light, 1);
 }
