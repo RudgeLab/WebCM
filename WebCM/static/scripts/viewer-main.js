@@ -831,13 +831,13 @@ function processMouseButton(event, context, isdown) {
 
 	switch (event.button) {
 	case 0:
-		if (isdown) doMousePick(context);
-		break;
-	case 1:
-		context["input"]["panButtonPressed"] = isdown;
+		if (isdown && event.shiftKey) 
+			doMousePick(context);
+
+		context["input"]["orbitButtonPressed"] = isdown && !event.shiftKey;
 		break;
 	case 2:
-		context["input"]["orbitButtonPressed"] = isdown;
+		context["input"]["panButtonPressed"] = isdown;
 		break;
 	}
 
