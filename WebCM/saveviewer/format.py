@@ -136,15 +136,14 @@ def write_states_to_buffer(cell_states, id_attribute, attributes_to_pack):
 
 	for it in cell_states.keys():
 		state = cell_states[it]
-		state_variables = vars(state)
 		state_object = {}
 
 		# Write ID
-		state_object[0] = state_variables[id_attribute]
+		state_object[0] = getattr(state, id_attribute)
 
 		# Write customizable attributes
 		for (attr, standard_name) in attributes_to_pack:
-			if not attr in state_variables:
+			if not hasattr(state, attr):
 				continue
 
 			if not standard_name in key_mappings:
@@ -153,7 +152,7 @@ def write_states_to_buffer(cell_states, id_attribute, attributes_to_pack):
 				key_mappings[standard_name] = len(key_mappings)
 
 			key_id = key_mappings[standard_name]
-			state_object[key_id] = state_variables[attr]
+			state_object[key_id] = getattr(state, attr)
 
 		cell_objects.append(state_object)
 
@@ -162,10 +161,16 @@ def write_states_to_buffer(cell_states, id_attribute, attributes_to_pack):
 	def default(obj):
 		if isinstance(obj, numpy.float32):
 			return float(obj)
+		elif isinstance(obj, numpy.int32):
+			return int(obj)	
 		elif isinstance(obj, numpy.ndarray):
 			return list(obj)
-		
-		raise TypeError(f"Could not pack type: {type(obj)}")
+		else:
+			# Fall back to list e.g. if a pyopencl type is used
+			try:
+				return list(obj)
+			except:
+				raise TypeError(f"Could not pack type: {type(obj)}")
 
 	packed_data = msgpack.packb(output_object, default=default)
 	return zlib.compress(packed_data, 2)

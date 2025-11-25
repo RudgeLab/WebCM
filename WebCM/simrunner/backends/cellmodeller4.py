@@ -43,6 +43,8 @@ class CellModeller4Backend(SimulationBackend):
 	def step(self):
 		self.simulation.step()
 		self.check_simulation_size(len(self.simulation.cellStates))
+
+		print(f"Number of cells: {len(self.simulation.cellStates)}")
 	
 	def _find_web_renderer(self):
 		# Deal with older versions of CellModeller that don't have WebRenderer
@@ -100,18 +102,12 @@ class CellModeller4Backend(SimulationBackend):
 		# Write cell data
 		byte_buffer.write(struct.pack("<i", len(cell_states)))
 
-		for it in cell_states.keys():
-			state = cell_states[it]
-
+		for id, state in cell_states.items():
 			packed_color = pack_norm_color(state.color[0], state.color[1], state.color[2], 1.0)
-
-			# The length is computed differenty in CellModeller4 and CellModeller5. The front-end 
-			# expects that the length will be calculated based on how its done in CM5.
-			final_length = max(state.length + 1.0 - 2.0 * state.radius, 0)
 
 			byte_buffer.write(struct.pack("<fff", state.pos[0], state.pos[2], state.pos[1]))
 			byte_buffer.write(struct.pack("<fff", state.dir[0], state.dir[2], state.dir[1]))
-			byte_buffer.write(struct.pack("<ffI", final_length, state.radius, packed_color))
+			byte_buffer.write(struct.pack("<ffI", state.length, state.radius, packed_color))
 
 		# Write cell IDs
 		for it in cell_states.keys():
