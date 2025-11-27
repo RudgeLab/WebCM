@@ -308,15 +308,12 @@ function generateGrid(gl, context) {
 export function pushFrameData(gl, context, dataBuffer) {
 	const dataView = new DataView(dataBuffer);
 	const cellCount = dataView.getInt32(0, true);
-
-	context["cellData"] = dataBuffer;
-	context["cellCount"] = cellCount;
 	
 	gl.bindBuffer(gl.ARRAY_BUFFER, context["bacteriumMesh"]["instanceBuffer"]);
 	gl.bufferData(gl.ARRAY_BUFFER, dataView, gl.DYNAMIC_DRAW, 4, dataBuffer.byteLength - 4);
 	gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-	const baseSignalsOffset = calcCellIdOffset(context, cellCount);
+	const baseSignalsOffset = calcCellIdOffset(cellCount, cellCount);
 	const hasSignals = dataView.getInt8(baseSignalsOffset);
 
 	if (hasSignals != 0) {
@@ -351,20 +348,31 @@ export function pushFrameData(gl, context, dataBuffer) {
 		context["colorVolume"]["enabled"] = false;
 	}
 
-	return [ cellCount ];
+	context["cellDrawInstanceCount"] = cellCount;
+
+	return cellCount;
 }
 
-export function calcCellVertexOffset(context, index) {
+/*
+  Viz frame format (there are listed in the order they come in in the format):
+    1. Array of per-instance attributes (pos, dir, length, radius, color)
+	2. Array of cell IDs
+	3. 'Has signal grid?' flag
+	4. If flag true, signal grid metadata (origin, grid cell size, grid cell count)
+	5. If flag true, 3D array of grid cell colors
+*/
+
+export function calcCellVertexOffset(index) {
 	return 4 + 36 * index;
 }
 
-export function calcCellIdOffset(context, index) {
-	return calcCellVertexOffset(context, context["cellCount"]) + 8 * index;
+export function calcCellIdOffset(index, cellCount) {
+	return calcCellVertexOffset(cellCount) + 8 * index;
 }
 
-export function lookupCellIdentifier(context, index) {
-	const baseOffset = calcCellIdOffset(context, index);
-	const dataView = new DataView(context["cellData"]);
+export function lookupCellIdentifier(data, index, cellCount) {
+	const baseOffset = calcCellIdOffset(index, cellCount);
+	const dataView = new DataView(data);
 
 	return dataView.getBigUint64(baseOffset, true);
 }
@@ -408,6 +416,8 @@ function createColorVolume(gl, context, origin, cellCount, cellSize, volumeData)
 }
 
 export async function init(gl, context) {
+	context["cellDrawInstanceCount"] = 0;
+
 	//Load cell shader
 	const fetchCellShader = async () => {
 		const cellVertexData = await fetchOrThrow("/static/shaders/cell_shader.vert");
@@ -500,9 +510,6 @@ export async function init(gl, context) {
 
 	//Create color volume
 	createColorVolume(gl, context, [ -30, -30, -30 ], [ 10, 10, 10 ], [ 6, 6, 6 ], null);
-
-	context["cellCount"] = 0;
-	context["cellData"] = null;
 
 	await Promise.all([
 		fetchCellShader(),
@@ -669,7 +676,7 @@ function drawScene(gl, context) {
 	gl.uniform1i(cellShader["uniforms"]["u_FlatShading"], flatShading);
 
 	gl.bindVertexArray(bacteriumMesh.vao);
-	gl.drawElementsInstanced(gl.TRIANGLES, bacteriumMesh.indexCount, bacteriumMesh.indexType, 0, context["cellCount"]);
+	gl.drawElementsInstanced(gl.TRIANGLES, bacteriumMesh.indexCount, bacteriumMesh.indexType, 0, context["cellDrawInstanceCount"]);
 	gl.bindVertexArray(null);
 }
 

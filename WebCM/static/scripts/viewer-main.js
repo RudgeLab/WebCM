@@ -9,6 +9,10 @@ function setSimFrame(index, frameCount) {
 	document.getElementById("sim-frame").innerHTML = `Frame: ${index} / ${frameCount}`;
 }
 
+function setSimCurrentCellCount(cellCount) {
+	document.getElementById("simdets-cellcount").innerText = cellCount;
+}
+
 function setSimMaxCellCount(cellCount) {
 	document.getElementById("simdets-maxcellcount").innerText = cellCount <= 0 ? "None" : cellCount;
 }
@@ -94,8 +98,8 @@ function appendInitLogMessage(message) {
 	textArea.scrollTop = textArea.scrollHeight;
 }
 
-async function requestShapes(context, uuid) {
-	const data = await fetch(`/api/shapelist?uuid=${uuid}`);
+async function requestShapes(context) {
+	const data = await fetch(`/api/shapelist?uuid=${context["simUUID"]}`);
 	if (!data.ok) {
 		console.error(`Error when shape list ${data.status} - ${data.statusText}`);
 		return;
@@ -106,31 +110,103 @@ async function requestShapes(context, uuid) {
 	context["shapeList"] = buffer;
 }
 
-async function requestFrame(context, uuid, index) {
-	context["currentFrameIndex"] = index;
+/*
+  Request a new frame to be shown.
+  
+    The original version of this function did the regular "send request, update viz data, return". However, when scrubbing through
+  long timelines, a LOT of requests would get sent to the server, and since django is slow and single-threaded by default, the
+  requests pilled up and latency increased to several seconds.
+    The solution chosen was to only send a new request after the current one has finished, even if the user asks for a new frame in the
+  meantime. The ideal would have been some kind of centralized 'request loop', but since Javascript lacks support for events (the
+  synchronization primitive), that idea was canned. The solution implemented here simply checks if a new frame has been requested by the
+  caller/user anytime a response arrives.
+*/
+async function requestFrame(context, index) {
+	let handler = context["frameRequestHandler"];
+	let uuid = context["simUUID"];
 
-	const frameRequestIndex = context["frameRequestIndex_Latest"]++;
+	if (handler.isRunning === true) {
+		handler.nextIndex = index;
+	} else {
+		handler.isRunning = true;
+		handler.nextIndex = null;
+
+		//IMPORTANT: Generally, do not "cache" the result of 'handler.nextIndex' because the local variable won't get
+		//           updated when another 'thread' changes the next index.
+		try {
+			/*
+			 We want to overlap the execution of 'sendVizDataRequest' and 'onFrameReceived' for speed reasons.
+			 This is what that looks like:
+
+			 |      Before loop      |        Loop #0        |       |       Loop #N-1       |      Loop #N       |
+			 | sendVizDataRequest(0) | sendVizDataRequest(1) |  ...  | sendVizDataRequest(N) |                    |
+			 |                       | onFrameReceived(0)    |  ...  | onFrameReceived(N-1)  | onFrameReceived(N) |
+			*/
+			let currentIndex = index;
+			let currentResponse = await sendVizDataRequest(uuid, index);
 	
-	const frameData = await fetch(`/api/vizdata?index=${index}&uuid=${uuid}`);
-	if (!frameData.ok) {
-		console.error(`Error when requesting frame ${index}: ${frameData.status} - ${frameData.statusText}`);
-		return;
+			while (true) {
+				if (handler.nextIndex != null) {
+					//Take the next index and reset it
+					let reqIndex = handler.nextIndex;
+					handler.nextIndex = null;
+	
+					//We use 'Promise.allSettled' here instead of 'Promise.all' because 'allSettled' waits for all promises
+					//to finish even if one of them rejects (i.e. fails)
+					let responses = await Promise.allSettled([
+						sendVizDataRequest(uuid, reqIndex),
+						onFrameReceived(context, currentIndex, currentResponse)
+					]);
+	
+					currentIndex = reqIndex;
+					currentResponse = responses[0].status == "fulfilled" ? responses[0].value : null;
+				} else {
+					if (currentResponse != null)
+						await onFrameReceived(context, currentIndex, currentResponse);
+	
+					if (handler.nextIndex == null)
+						break;
+				}
+			}
+		} finally {
+			handler.isRunning = false;
+
+			//Under normal conditions, this shouldn't be needed. However, if one of the requests in the try...catch throws an exception,
+			//its possible that we will exit the loop before the next index is handled.
+			if (handler.nextIndex != null)
+				return requestFrame(context, handler.nextIndex);
+		}
+	}
+}
+
+async function sendVizDataRequest(uuid, index) {
+	try {
+		const frameData = await fetch(`/api/vizdata?index=${index}&uuid=${uuid}`);
+
+		if (frameData.ok) {
+			return frameData;
+		} else {
+			console.error(`Error when requesting frame ${index}: ${frameData.status} - ${frameData.statusText}`);
+		}
+	} catch (error) {
+		console.error(error);
 	}
 
-	const frameBuffer = await frameData.arrayBuffer();
+	return null;
+}
 
-	if (frameRequestIndex < context["frameRequestIndex_Received"]) {
-		//Skip this frame
-		return;
-	}
+async function onFrameReceived(context, index, frameResponse) {
+	const frameBuffer = await frameResponse.arrayBuffer();
 
-	context["frameRequestIndex_Received"] = frameRequestIndex;
-	context["simInfo"].frameIndex = index;
+	//Update the user interface
+	const cellCount = render.pushFrameData(context["graphics"]["gl"], context, frameBuffer)
+
+	context["currentFrame"]["cellData"] = frameBuffer;
+	context["currentFrame"]["cellCount"] = cellCount;
+	context["currentFrame"]["frameIndex"] = index;
 
 	setSimFrame(index + 1, context["simInfo"].frameCount);
-
-	//Update UI
-	const [ cellCount ] = render.pushFrameData(context["graphics"]["gl"], context, frameBuffer)
+	setSimCurrentCellCount(cellCount);
 
 	//Update the cell index based on the identifier
 	if (context["selectedCellIndex"] >= 0) {
@@ -139,14 +215,12 @@ async function requestFrame(context, uuid, index) {
 		const identifier = context["selectedCellIdentifier"];
 
 		for (let i = 0; i < cellCount; i++) {
-			if (render.lookupCellIdentifier(context, i) === identifier) {
+			if (render.lookupCellIdentifier(frameBuffer, i, cellCount) === identifier) {
 				context["selectedCellIndex"] = i;
 				break;
 			}
 		}
 	}
-
-	document.getElementById("simdets-cellcount").innerText = cellCount;
 
 	await updateCellInfo(context);
 }
@@ -292,7 +366,6 @@ function connectToServer(context) {
 
 				context["simInfo"] = {};
 				context["simInfo"].name = data.name;
-				context["simInfo"].frameIndex = 0;
 				context["simInfo"].frameCount = data.frameCount;
 
 				context["timelineSlider"].max = data.frameCount;
@@ -302,15 +375,15 @@ function connectToServer(context) {
 				setSimMaxCellCount(data.maxSimSize);
 				setStatusFromServer(data.status);
 
-				await requestShapes(context, context["simUUID"]);
-
-				if (data.frameCount > 0) {
-					await requestFrame(context, context["simUUID"], context["simInfo"].frameIndex);
-				}
+				await requestShapes(context);
 
 				if (data.crashMessage) {
 					openInitLogWindow(context, "Crash error");
 					writeInitLogMessage(data.crashMessage);
+				}
+
+				if (data.frameCount > 0) {
+					requestFrame(context, 0);
 				}
 			} else if (action === "newframe") {
 				const frameCount = data["frameCount"];
@@ -319,14 +392,14 @@ function connectToServer(context) {
 				context["timelineSlider"].max = frameCount;
 
 				if (context["alwaysUseLatestStep"] && frameCount > 0) {
-					requestFrame(context, context["simUUID"], frameCount - 1);
+					requestFrame(context, frameCount - 1);
 
 					context["timelineSlider"].value = frameCount;
 				} else {
-					setSimFrame(context["simInfo"].frameIndex, context["simInfo"].frameCount);
+					setSimFrame(context["currentFrame"]["frameIndex"], context["simInfo"].frameCount);
 				}
 			} else if (action === "newshape") {
-				await requestShapes(context, context["simUUID"]);
+				await requestShapes(context);
 			} else if (action === "infolog") {
 				openInitLogWindow(context, "Initialization Log");
 				writeInitLogMessage(data);
@@ -387,7 +460,7 @@ function processTimelineChange(value, context) {
 	//NOTE: When someone re-opens a closed tab, the web browser may send an oninput
 	//event. This might happen before "simUUID" has been set, so we end sending "undefined" as the UUID
 	if (context["simUUID"] != undefined) {
-		requestFrame(context, context["simUUID"], value - 1);
+		requestFrame(context, value - 1);
 	}
 }
 
@@ -420,7 +493,7 @@ async function updateCellInfo(context) {
 		cellDetailsSection.style.display = "none";
 	} else {
 		const simUUID = context["simUUID"];
-		const frameIndex = context["currentFrameIndex"];
+		const frameIndex = context["currentFrame"]["frameIndex"];
 		const cellId = context["selectedCellIdentifier"];
 
 		const cellData = await fetch(`/api/cellinfoindex?cellid=${cellId}&frameindex=${frameIndex}&uuid=${simUUID}`);
@@ -488,12 +561,14 @@ function doMousePick(context) {
 
 	//const t0 = performance.now();
 
+	const currentFrame = context["currentFrame"];
 	const camera = context["camera"];
-	const viewportWidth = camera["width"];
-	const viewportHeight = camera["height"];
 
 	const mouseX = context["input"]["lastMouseX"];
 	const mouseY = context["input"]["lastMouseY"];
+
+	const viewportWidth = camera["width"];
+	const viewportHeight = camera["height"];
 
 	const ndcX = 2.0 * (mouseX / viewportWidth) - 1.0;
 	const ndcY = 1.0 - 2.0 * (mouseY / viewportHeight);
@@ -511,17 +586,17 @@ function doMousePick(context) {
 
 	const cameraPos = camera["position"];
 
-	const dataBuffer = context["cellData"];
+	const dataBuffer = currentFrame["cellData"];
 	if (!dataBuffer) return;
 
-	const cellCount = context["cellCount"];
+	const cellCount = currentFrame["cellCount"];
 	const dataView = new DataView(dataBuffer);
 
 	let minIndex = -1;
 	let minDist = Number.MAX_VALUE;
 
 	for (let i = 0; i < cellCount; i++) {
-		const baseOffset = render.calcCellVertexOffset(context, i);
+		const baseOffset = render.calcCellVertexOffset(i);
 
 		const cellPos = vec3.fromValues(
 			dataView.getFloat32(baseOffset + 0, true),
@@ -562,7 +637,7 @@ function doMousePick(context) {
 	//console.log(`Performance: ${t1 - t0}ms (${minIndex}, ${minDist})`);
 
 	context["selectedCellIndex"] = minIndex;
-	context["selectedCellIdentifier"] = minIndex !== -1 ? render.lookupCellIdentifier(context, minIndex) : undefined;
+	context["selectedCellIdentifier"] = minIndex !== -1 ? render.lookupCellIdentifier(dataBuffer, minIndex, cellCount) : undefined;
 
 	updateCellInfo(context);
 }
@@ -571,14 +646,25 @@ async function initFrame(gl, context) {
 	setStatusMessage("Initializing");
 
 	context["selectedCellIndex"] = -1;
-	context["currentFrameIndex"] = 0;
-	context["frameRequestIndex_Received"] = 0;
-	context["frameRequestIndex_Latest"] = 0;
+	context["selectedCellIdentifier"] = -1;
 	context["isMessageLogOpen"] = false;
 	context["isSettingsWindowOpen"] = false;
 	context["isDownloadOptionsWindowOpen"] = false;
 	
 	context["isDownloadingFrames"] = false;
+
+	//Initialize current frame data
+	context["currentFrame"] = {
+		"cellData": null,
+		"cellCount": 0,
+		"frameIndex": 0,
+	};
+
+	//Initialize frame request handler
+	context["frameRequestHandler"] = {
+		"isRunning": false,
+		"nextIndex": 0,
+	};
 
 	//Initialize camera details
 	context["camera"] = {
@@ -616,7 +702,6 @@ async function initFrame(gl, context) {
 	//Initialize simulation info
 	context["simInfo"] = {
 		"name": "",
-		"frameIndex": 0,
 		"frameCount": 0
 	};
 
