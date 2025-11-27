@@ -5,9 +5,11 @@ import uuid
 
 class SimulationEntry(models.Model):
 	owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-	title = models.TextField(unique=True)
-	description = models.TextField()
 	uuid = models.UUIDField(default=uuid.uuid4, editable=True)
+	title = models.TextField(unique=True)
+	backend_version = models.TextField()
+	source_uuid = models.UUIDField(default=None, null=True, editable=True)
+	source_copy = models.TextField()
 	max_cell_count = models.IntegerField(default=0)
 
 	def __str__(self):

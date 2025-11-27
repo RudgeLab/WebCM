@@ -100,7 +100,16 @@ def editor(request, src_uuid):
 	else:
 		page_title = f"{as_simulation.title} - Simulation source"
 
-	context = RequestContext(request, { "source_uuid": src_uuid, "page_title": page_title })
+	if from_source_file:
+		source_name = f"Source file '{as_source_file.name}'"
+	else:
+		if not as_simulation.source_uuid is None:
+			source_file = models.lookup_source_content(as_simulation.source_uuid)
+			source_name = f"Simulation '{as_simulation.title}'" if source_file is None else f"Source file '{source_file.name}'"
+		else:
+			source_name = f"Simulation '{as_simulation.title}'"
+
+	context = RequestContext(request, { "source_uuid": src_uuid, "page_title": page_title, "source_name": source_name })
 	content = Template(index_data).render(context)
 
 	return HttpResponse(content)
@@ -129,7 +138,7 @@ def sim_header(request):
 
 	sim_id = UUID(request.GET["uuid"])
 	simulation = models.lookup_simulation(sim_id)
-	index_data = archiver.get_instance_index_data(sim_id)
+	index_data = archiver.get_cached_instance_index_data(sim_id)
 	status = manager.get_simulation_status(sim_id)
 
 	response_content = json.dumps({
@@ -156,7 +165,7 @@ def viz_data(request):
 	sim_id = request.GET["uuid"]
 	index = request.GET["index"]
 
-	files = archiver.get_simulation_step_files(UUID(sim_id), index)
+	files = archiver.get_simulation_step_files(UUID(sim_id), int(index))
 	if files is None: return HttpResponseBackendError(f"Index '{index}' in simulation '{sim_id}' does not exist")
 
 	response = FileResponse(open(files[1], "rb"))
@@ -176,7 +185,7 @@ def cell_states(request):
 	sim_id = request.GET["uuid"]
 	index = request.GET["index"]
 
-	files = archiver.get_simulation_step_files(UUID(sim_id), index)
+	files = archiver.get_simulation_step_files(UUID(sim_id), int(index))
 	if files is None: return HttpResponseBackendError(f"Index '{index}' in simulation '{sim_id}' does not exist")
 
 	response = FileResponse(open(files[0], "rb"))
@@ -198,7 +207,7 @@ def cell_info_from_index(request):
 	frameindex = request.GET["frameindex"]
 	cellid = request.GET["cellid"]
 
-	files = archiver.get_simulation_step_files(UUID(sim_id), frameindex)
+	files = archiver.get_simulation_step_files(UUID(sim_id), int(frameindex))
 	if files is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' (index {frameindex}) found")
 
 	cell_data = sv_format.read_state_with_id(files[0], int(cellid))
@@ -217,7 +226,7 @@ def shape_list(request):
 
 	sim_id = request.GET["uuid"]
 
-	index_data = archiver.get_instance_index_data(UUID(sim_id))
+	index_data = archiver.get_cached_instance_index_data(UUID(sim_id))
 	if index_data is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' found")
 
 	response_content = json.dumps(index_data["shape_list"])
@@ -234,7 +243,7 @@ def list_owned_simulations(request):
 	for sim in entries:
 		status = manager.get_simulation_status(sim.uuid)
 
-		response_content.append({ "uuid": str(sim.uuid), "title": sim.title, "desc": sim.description, "status": status })
+		response_content.append({ "uuid": str(sim.uuid), "title": sim.title, "status": status })
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
 
@@ -278,9 +287,26 @@ def get_source_content(request):
 		return HttpResponseBadRequest("No simulation UUID provided")
 	
 	uuid_val = UUID(request.GET["uuid"])
-	
+	content =  ""
+
 	source_file = models.lookup_source_content(uuid_val)
-	content = archiver.read_simulation_source(uuid_val) if source_file is None else source_file.content
+	
+	if not source_file is None:
+		content = source_file.content
+	else:
+		simulation = models.lookup_simulation(uuid_val)
+		if simulation is None:
+			return HttpResponseBadRequest("Provided UUID does matches neiter a simulation nor a source file")
+
+		if not simulation.source_uuid is None:
+			source_file = models.lookup_source_content(simulation.source_uuid)
+
+			if not source_file is None:
+				content = source_file.content
+			else:
+				content = simulation.source_copy
+		else:
+			content = simulation.source_copy
 
 	return response_no_cache(HttpResponse(content, content_type="text/plain"))
 
@@ -289,15 +315,30 @@ def set_source_content(request):
 	request_json = json.loads(request_content)
 
 	uuid_val = UUID(request_json["uuid"])
+	content = request_json["source"]
 
 	source_file = models.lookup_source_content(uuid_val)
-	source_content = request_json["source"]
-
+	
 	if not source_file is None:
-		source_file.content = source_content
+		source_file.content = content
 		source_file.save()
 	else:
-		archiver.write_simulation_source(uuid_val, source_content)
+		simulation = models.lookup_simulation(uuid_val)
+		if simulation is None:
+			return HttpResponseBadRequest("Provided UUID does matches neiter a simulation nor a source file")
+
+		if not simulation.source_uuid is None:
+			source_file = models.lookup_source_content(simulation.source_uuid)
+
+			if not source_file is None:
+				source_file.content = content
+				source_file.save()
+			else:
+				simulation.source_copy = content
+				simulation.save()
+		else:
+			simulation.source_copy = content
+			simulation.save()
 
 	return response_no_cache(HttpResponse())
 
@@ -325,12 +366,13 @@ def create_new_simulation(request):
 
 	# Check parameters
 	sim_name = creation_parameters.get("name", None)
-	sim_source = creation_parameters.get("source", None)
 	sim_backend = creation_parameters.get("backend", None)
+	source_uuid = creation_parameters.get("source-uuid", None)
+	source_copy = creation_parameters.get("source-content", "")
 
 	if sim_name is None: return HttpResponseBadRequest("Simulation name not provided")
-	if sim_source is None: return HttpResponseBadRequest("Simulation source not provided")
 	if sim_backend is None: return HttpResponseBadRequest("Simulation backend not specified")
+	if source_uuid is None and source_copy is None: return HttpResponseBadRequest("Neither simulation source nor source file provided")
 
 	if not type(sim_backend) is str: return HttpResponseBadRequest(f"Invalid backend data type: {type(sim_backend)}")
 
@@ -338,16 +380,16 @@ def create_new_simulation(request):
 	sim_name = sim_name.strip()
 
 	if sim_name == "":
-		return HttpResponseBackendError("Empty simulation name is not allowed");
+		return HttpResponseBackendError("Empty simulation name is not allowed")
 
 	if not models.lookup_simulation_by_name(sim_name) is None:
-		return HttpResponseBackendError(f"Simulation with name '{sim_name}' already exists");
+		return HttpResponseBackendError(f"Simulation with name '{sim_name}' already exists")
 
 	# Create the simulation and return its UUID
 	user_settings = models.lookup_per_user_settings(request.user)
 	max_size = 0 if user_settings is None else int(user_settings.max_cell_count)
 
-	uuid = manager.create_simulation(request.user, sim_name, "", sim_source, sim_backend, max_size)
+	uuid = manager.create_simulation(request.user, sim_name, sim_backend, max_size, source_uuid, source_copy)
 
 	return HttpResponse(str(uuid))
 

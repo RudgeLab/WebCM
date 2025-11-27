@@ -37,6 +37,13 @@
 			border-width: 0 0 1px 0;
 		}
 
+		#toolbar-title {
+			display: flex;
+			flex-direction: row;
+			flex: 1;
+			justify-content: center;
+		}
+
 		.toolbar-item {
 			display: flex;
 			flex-direction: column;
@@ -70,11 +77,16 @@
 	<div id="root-container">
 		<input type="file" name="upload-file" id="source-upload-file" style="display: none;" accept=".txt,.py">
 		<div id="editor-toolbar" tabindex="0">
-			<div style="display: flex; flex-direction: row; flex: 1;">
+			<div style="display:flex;flex-direction:row">
 				<div id="home-btn" class="toolbar-item toolbar-item-select">Home</div>
 				<div id="save-source-btn" class="toolbar-item toolbar-item-select">Save Source</div>
 				<div id="upload-file-btn" class="toolbar-item toolbar-item-select">Upload File</div>
 			</div>
+
+			<div style="flex: 1"></div>
+
+			<div class="toolbar-item">{{ source_name }}</div>
+			<div class="toolbar-item">&#x2014;</div>
 			<div id="source-state" class="toolbar-item">Saved</div>
 		</div>
 		<div id="editor-container"></div>

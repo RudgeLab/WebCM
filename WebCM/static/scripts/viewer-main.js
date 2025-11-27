@@ -391,8 +391,13 @@ function connectToServer(context) {
 				context["simInfo"].frameCount = frameCount;
 				context["timelineSlider"].max = frameCount;
 
-				if (context["alwaysUseLatestStep"] && frameCount > 0) {
-					requestFrame(context, frameCount - 1);
+				if (context["alwaysUseLatestStep"]) {
+					if (frameCount == 0) {
+						render.clearFrameData(context);
+						setSimFrame(0, 0);
+					} else {
+						requestFrame(context, frameCount - 1);
+					}
 
 					context["timelineSlider"].value = frameCount;
 				} else {

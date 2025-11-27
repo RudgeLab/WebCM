@@ -87,7 +87,7 @@ function markAsError(elemId, isError) {
 }
 
 async function submitCreateSimulationRequest() {
-	async function _create(name, source, version) {
+	async function _create(name, sourceUUID, sourceContent, version) {
 		const response = await fetch("/api/createnewsimulation", {
 			method: "POST",
 			headers: {
@@ -97,19 +97,20 @@ async function submitCreateSimulationRequest() {
 			},
 			body: JSON.stringify({
 				"name": name,
-				"source": source,
-				"backend": version
+				"backend": version,
+				"source-uuid": sourceUUID,
+				"source-content": sourceContent,
 			})
 		});
 	
 		if (!response.ok) {
 			showAlert(await response.text());
-			return;
+		} else {
+			const simUUID = await response.text();
+			window.open(`/view/${simUUID}/`, "_blank");
 		}
 
-		const simUUID = await response.text();
-	
-		window.open(`/view/${simUUID}/`, "_blank");
+		await refreshSimList();
 	}
 
 	const simName = document.getElementById("input-create-name");
@@ -121,20 +122,17 @@ async function submitCreateSimulationRequest() {
 	const name = simName.value;
 	const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']");
 
-	if (sourceFileSelect.value != "") {
-		const sourceResponse = await fetch(`/api/getsrccontent?uuid=${sourceFileSelect.value}`);
-		if (!sourceResponse.ok) { throw new Error(`Request error: ${sourceResponse.status}`); }
-		
-		const source = await sourceResponse.text();
-		await _create(name, source, version);
-		await refreshSimList();
-	} else {
+	const sourceUUID = sourceFileSelect.value;
+
+	if (sourceFileSelect.value == "") {
 		const sourceUpload = document.getElementById("input-upload-file");
 
 		sourceUpload.onchange = (event) => {
-			event.target.files[0].slice().text().then((content) => _create(name, content, version));
+			event.target.files[0].slice().text().then((content) => _create(name, null, content, version));
 		};
 		sourceUpload.click();
+	} else {
+		_create(name, sourceUUID, "", version);
 	}
 }
 

@@ -305,6 +305,11 @@ function generateGrid(gl, context) {
 	};
 }
 
+export function clearFrameData(context) {
+	context["colorVolume"]["enabled"] = false;
+	context["cellDrawInstanceCount"] = 0;
+}
+
 export function pushFrameData(gl, context, dataBuffer) {
 	const dataView = new DataView(dataBuffer);
 	const cellCount = dataView.getInt32(0, true);

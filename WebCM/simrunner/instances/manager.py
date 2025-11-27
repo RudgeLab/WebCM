@@ -13,18 +13,16 @@ from uuid import UUID
 global__active_instances = {}
 global__instance_lock = threading.Lock()
 
-def create_simulation(user, sim_title, sim_desc, sim_source, sim_version, sim_max_size):
+def create_simulation(user, sim_title, sim_version, sim_max_size, source_uuid, source_copy):
 	global global__active_instances
 	global global__instance_lock
 
 	assert type(sim_max_size) is int
 
-	sim_uuid = archiver.register_simulation(user, sim_title, sim_desc, sim_max_size)
+	sim_uuid = archiver.register_simulation(user, sim_title, sim_version, sim_max_size, source_uuid, source_copy)
 	save_dir = archiver.get_simulation_location(sim_uuid)
 
 	with global__instance_lock:
-		archiver.write_sim_source_to_location(save_dir, sim_source)
-
 		sim_instance = SimulationInstance(sim_uuid, sim_version, save_dir, sim_max_size)
 		sim_instance.launch()
 
@@ -119,11 +117,10 @@ def reload_simulation(uuid):
 		from cloudserver.models import lookup_simulation
 
 		save_dir = archiver.get_simulation_location(uuid)
-		index_data = archiver.get_instance_index_data(uuid)
 		simulation = lookup_simulation(uuid)
 
 		with global__instance_lock:
-			sim_instance = SimulationInstance(uuid, index_data["backend_version"], save_dir, simulation.max_cell_count)
+			sim_instance = SimulationInstance(uuid, simulation.backend_version, save_dir, simulation.max_cell_count)
 			sim_instance.launch()
 
 			global__active_instances[uuid] = sim_instance

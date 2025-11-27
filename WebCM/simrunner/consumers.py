@@ -60,7 +60,7 @@ class UserCommsConsumer(WebsocketConsumer):
 
 		# Send simulation information to the client
 		simulation = lookup_simulation(self.sim_uuid)
-		index_data = archiver.get_instance_index_data(self.sim_uuid)
+		index_data = archiver.get_cached_instance_index_data(self.sim_uuid)
 		status = manager.get_simulation_status(self.sim_uuid)
 
 		response_data = {

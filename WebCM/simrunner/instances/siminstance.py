@@ -18,7 +18,6 @@ from simrunner.instances.duplex_pipe_endpoint import DuplexPipeEndpoint
 
 class _InstanceProcessParams:
 	root_dir = ""
-	source_path = ""
 	backend = ""
 	max_cell_count = 0
 
@@ -39,7 +38,7 @@ class SimulationInstance:
 		self.uuid = uuid
 		self.backend_version = version
 		self.root_path = os.path.abspath(root_path)
-		self.is_alive = True
+		self.is_alive = False
 		self.max_cell_count = max_cell_count
 		self.current_status = "launching"
 	
@@ -47,16 +46,14 @@ class SimulationInstance:
 		self.close()
 
 	def launch(self):
-		self.send_message_to_clients(clientmessages.Status(self.current_status))
+		archiver.update_cached_instance_index(self.uuid, archiver.init_empty_instance_index())
 
-		# Setup the simulation directory
-		index_data = archiver.write_empty_index_file(os.path.join(self.root_path, "index.json"), self.backend_version)
-		archiver.update_instance_index(self.uuid, index_data)
+		self.send_message_to_clients(clientmessages.Status(self.current_status))
+		self.send_message_to_clients(clientmessages.NewFrame(0))
 
 		# Launch the simulation process
 		params = _InstanceProcessParams()
 		params.root_dir = self.root_path
-		params.source_path = self.get_source_file_path()
 		params.backend = self.backend_version
 		params.max_cell_count = self.max_cell_count
 
@@ -72,6 +69,7 @@ class SimulationInstance:
 		parent_pipe, child_pipe = mp.Pipe(duplex=True)
 
 		self.pipes = (parent_pipe, child_pipe)
+		self.is_alive = True
 
 		# Create a new process and start it
 		self.process = ctx.Process(target=instance_control_thread, args=(child_pipe, params), daemon=True)
@@ -85,20 +83,24 @@ class SimulationInstance:
 		(action, data) = decode_pipe_message(message)
 
 		if action == "newframe":
-			archiver.update_instance_index(self.uuid, data["new_data"])
+			archiver.update_cached_instance_index(self.uuid, data["new_data"])
 
 			self.send_message_to_clients(clientmessages.NewFrame(data["frame_count"]))
 		elif action == "newshape":
-			archiver.update_instance_index(self.uuid, data["new_data"])
+			archiver.update_cached_instance_index(self.uuid, data["new_data"])
 
 			self.send_message_to_clients(clientmessages.NewShape())
 		elif action == "error_message":
-			archiver.update_instance_index(self.uuid, data["new_data"])
+			archiver.update_cached_instance_index(self.uuid, data["new_data"])
 			
 			self.send_message_to_clients(clientmessages.ErrorMessage(data["new_data"]["crash_message"]))
 		elif action == "status":
 			self.current_status = data
 			self.send_message_to_clients(clientmessages.Status(self.current_status))
+		elif action == "source_request":
+			source_content = archiver.update_and_fetch_simulation_source(self.uuid)
+
+			self.send_message_to_instance({ "source_response": source_content })
 		elif action == "close":
 			self._cleanup()
 
@@ -111,9 +113,6 @@ class SimulationInstance:
 
 	def send_message_to_clients(self, message):
 		wsgroups.send_message_to_websocket_group(f"simcomms/{str(self.uuid)}", message)
-
-	def get_source_file_path(self):
-		return os.path.join(self.root_path, "source.py")
 
 	def _cleanup(self):
 		self.is_alive = False
@@ -188,7 +187,11 @@ def instance_control_thread(pipe, instance_params):
 	paused_event = threading.Event()
 	paused_event.set()
 
-	def endpoint_callback():
+	source_response = ""
+	source_response_event = threading.Event()
+	source_response_event.set()
+
+	def endpoint_close_callback():
 		# We don't have any endpoint-related resources to clean up, but there is no point in
 		# running the simulation if we have disconnected from the server, so we should stop the
 		# simulation.
@@ -203,6 +206,8 @@ def instance_control_thread(pipe, instance_params):
 		nonlocal is_running
 		nonlocal needs_reload
 		nonlocal paused_event
+		nonlocal source_response
+		nonlocal source_response_event
 
 		if action == "stop":
 			is_running = False
@@ -213,8 +218,11 @@ def instance_control_thread(pipe, instance_params):
 			paused_event.clear()
 		elif action == "continue":
 			paused_event.set()
+		elif action == "source_response":
+			source_response = data
+			source_response_event.set()
 
-	endpoint = DuplexPipeEndpoint(pipe, recv_message_from_control, endpoint_callback)
+	endpoint = DuplexPipeEndpoint(pipe, recv_message_from_control, endpoint_close_callback)
 	endpoint.start()
 
 	def send_message_to_control(message):
@@ -226,7 +234,7 @@ def instance_control_thread(pipe, instance_params):
 	os.chdir(instance_params.root_dir)
 	print(f"CWD changed to: {os.getcwd()}")
 
-	index_path = "index.json"
+	index_data = archiver.init_empty_instance_index()
 
 	# This is more of a "sanity try-catch". It is here to make sure that
 	# if any exceptions occur, we still properly clean up the simulation instance
@@ -237,19 +245,22 @@ def instance_control_thread(pipe, instance_params):
 		params.cache_dir = os.path.join(params.sim_root_dir, params.cache_relative_prefix)
 		params.max_cell_count = instance_params.max_cell_count
 		
-		index_path = os.path.join(params.sim_root_dir, "index.json")
-
 		while True:
 			# Read source file
-			with open(instance_params.source_path, "rt") as srcfile:
-				params.source = srcfile.read()
+			send_message_to_control({ "source_request": "" })
+			print("Waiting for simulation source...")
+
+			source_response_event.clear()
+			source_response_event.wait()
+			params.source = source_response
 
 			# Create backend
 			backend = create_instance_from_name(instance_params.backend, params)
 			backend.initialize()
 
 			# Write shapes
-			index_data = archiver.write_shapes_to_sim_index(index_path, backend.get_shape_list())
+			index_data = archiver.init_empty_instance_index()
+			index_data["shape_list"] = backend.get_shape_list()
 			
 			send_message_to_control({ "newshape": { "new_data": index_data } })
 			send_message_to_control({ "status": "running" })
@@ -264,9 +275,13 @@ def instance_control_thread(pipe, instance_params):
 				# Its better if we update the index file from the simulation process because, otherwise,
 				# some message might get lost when closing the pipe and some step files might not get added
 				# to the index file
-				index_data, frame_count = archiver.write_entry_to_sim_index(index_path, step_path, viz_bin_path)
+				index_data["vizframes"].append(viz_bin_path)
+				index_data["stepframes"].append(step_path)
+				index_data["num_frames"] = len(index_data["stepframes"])
 
-				send_message_to_control({ "newframe": { "frame_count": frame_count, "new_data": index_data } })
+				archiver.write_simulation_index(instance_params.root_dir, index_data)
+
+				send_message_to_control({ "newframe": { "frame_count": index_data["num_frames"], "new_data": index_data } })
 
 				# NOTE(Jason): The stream won't write the results to a file immediately after getting some data.
 				# If we close Django from the terminal (with Ctrl+C or Ctrl+Break), then the simulation
@@ -289,9 +304,7 @@ def instance_control_thread(pipe, instance_params):
 				needs_reload = False
 
 				send_message_to_control({ "status": "reloading" })
-
-				index_data = archiver.write_empty_index_file(index_path, instance_params.backend)
-				send_message_to_control({ "newframe": { "frame_count": 0, "new_data": index_data } })
+				send_message_to_control({ "newframe": { "frame_count": 0, "new_data": archiver.init_empty_instance_index() } })
 
 				continue
 
@@ -305,7 +318,12 @@ def instance_control_thread(pipe, instance_params):
 		exc_message = traceback.format_exc()
 		print(exc_message)
 
-		index_data = archiver.write_crash_to_sim_index(index_path, str(exc_message))
+		# Add the crash message to the index
+		index_data["has_crashed"] = True
+		index_data["crash_message"] = str(exc_message)
+
+		archiver.write_simulation_index(instance_params.root_dir, index_data)
+
 		send_message_to_control({ "error_message": { "new_data": index_data } })
 		send_message_to_control({ "close": { "abrupt": True } })
 	finally:

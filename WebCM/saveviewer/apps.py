@@ -1,10 +1,6 @@
 from django.apps import AppConfig
-
-from saveviewer import archiver
+from django.db.models.signals import post_migrate
 
 class SaveViewerConfig(AppConfig):
 	name = "saveviewer"
 	verbose_name = "CellModeller Save Viewer"
-
-	def ready(self):
-		archiver.initialize_save_archiver()
