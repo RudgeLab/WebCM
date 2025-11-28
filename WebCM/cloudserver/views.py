@@ -165,7 +165,13 @@ def viz_data(request):
 	sim_id = request.GET["uuid"]
 	index = request.GET["index"]
 
-	files = archiver.get_simulation_step_files(UUID(sim_id), int(index))
+	try:
+		sim_id = UUID(sim_id)
+		index = int(index)
+	except Exception as e:
+		return HttpResponseBadRequest(f"Malformed input: {e}")
+
+	files = archiver.get_simulation_step_files(sim_id, index)
 	if files is None: return HttpResponseBackendError(f"Index '{index}' in simulation '{sim_id}' does not exist")
 
 	response = FileResponse(open(files[1], "rb"))
