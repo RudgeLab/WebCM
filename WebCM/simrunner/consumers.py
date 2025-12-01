@@ -90,9 +90,10 @@ class UserCommsConsumer(WebsocketConsumer):
 
 	def send_client_message(self, message):
 		if False: pass
-		elif type(message) == clientmessages.NewFrame: self.send_message("newframe", { "frameCount": message.frame_count })
-		elif type(message) == clientmessages.NewShape: self.send_message("newshape", "")
-		elif type(message) == clientmessages.Status:   self.send_message("status_change", message.status)
+		elif type(message) == clientmessages.SimLaunch: self.send_message("simlaunch", "")
+		elif type(message) == clientmessages.NewFrame:  self.send_message("newframe", { "frameCount": message.frame_count })
+		elif type(message) == clientmessages.NewShape:  self.send_message("newshape", "")
+		elif type(message) == clientmessages.Status:    self.send_message("status_change", message.status)
 		elif type(message) == clientmessages.ErrorMessage: self.send_message("error_message", message.message)
 
 	def send_message(self, action, data):

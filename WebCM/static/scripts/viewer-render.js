@@ -643,9 +643,9 @@ export function resize(gl, context, canvas) {
 
 function drawScene(gl, context) {
 	const camera = context["camera"];
-	const projMatrix = camera["projectionMatrix"];
+	const projMatrix = camera["projMatrix"];
 	const viewMatrix = camera["viewMatrix"];
-	const invViewMatrix = mat4.invert(mat4.create(), viewMatrix);
+	const invViewMatrix = camera["invViewMatrix"];
 
 	//Draw grid
 	const gridShader = context["gridShader"];
@@ -763,11 +763,12 @@ export function drawFrame(gl, context, delta) {
 
 	const signalsVolumeEnabled = context["renderSettings"]["signalVolumeEnabled"];
 
-	const layerCount = depthPeelingSettings["enabled"] ? Math.max(1, depthPeelingSettings["layerCount"]) : 1;
+	const hasDepthPeeling = depthPeelingSettings["enabled"] && context["shapeList"].length > 0;
+	const layerCount = hasDepthPeeling ? Math.max(1, depthPeelingSettings["layerCount"]) : 1;
 	const volumeDensityMultiplier = Math.max(0, 0.18 * context["renderSettings"]["signalVolumeDensity"]);
 	
 	const camera = context["camera"];
-	const projMatrix = camera["projectionMatrix"];
+	const projMatrix = camera["projMatrix"];
 	const viewMatrix = camera["viewMatrix"];
 
 	//Setup scene

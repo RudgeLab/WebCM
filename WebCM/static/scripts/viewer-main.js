@@ -31,72 +31,40 @@ function setStatusFromServer(message) {
 
 /****** Dialog windows ******/
 
-function showSettings(context) {
-	closeDownloadOptions(context);
+function showSettings() { closeAll(); document.getElementById("settings-container").style.display = "inline"; }
+function closeSettings() {            document.getElementById("settings-container").style.display = "none"; }
 
-	document.getElementById("settings-container").style.display = "inline";
-	context["isSettingsWindowOpen"] = true;
+function showInitLog() { closeAll(); document.getElementById("message-log-container").style.display = "inline"; }
+function closeInitLog() {            document.getElementById("message-log-container").style.display = "none"; }
+
+window.closeSettings = closeSettings;
+window.closeInitLog = closeInitLog;
+
+function closeAll() {
+	closeSettings();
+	closeInitLog();
 }
 
-function closeSettings(context) {
-	document.getElementById("settings-container").style.display = "none";
-	context["isSettingsWindowOpen"] = false;
-}
-
-function toggleSettings(context) {
-	if (context["isSettingsWindowOpen"]) closeSettings(context);
-	else showSettings(context);
-}
-
-function showDownloadOptions(context) {
-	closeSettings(context);
-
-	document.getElementById("download-options-container").style.display = "inline";
-	context["isDownloadOptionsWindowOpen"] = true;
-}
-
-function closeDownloadOptions(context) {
-	document.getElementById("download-options-container").style.display = "none";
-	context["isDownloadOptionsWindowOpen"] = false;
-}
-
-function toggleDownloadOptions(context) {
-	if (context["isDownloadOptionsWindowOpen"]) closeDownloadOptions(context);
-	else showDownloadOptions(context);
-}
-
-/****** Init log ******/
-function openInitLogWindow(context, title) {
-	closeSettings(context);
-	closeDownloadOptions(context);
-
-	document.getElementById("message-log-title").innerText = title;
-	document.getElementById("message-log-container").style.display = "inline";
-
-	context["isMessageLogOpen"] = true;
-}
-
-function closeInitLogWindow(context, clear) {
-	document.getElementById("message-log-container").style.display = "none";
-
-	if (clear) {
-		document.getElementById("message-log-text").value = "";
-	}
-
-	context["isMessageLogOpen"] = false;
+function toggleSettings() {
+	if (document.getElementById("settings-container").style.display != "none")
+		closeSettings()
+	else
+		showSettings();
 }
 
 function writeInitLogMessage(message) {
 	var textArea = document.getElementById("message-log-text");
-	textArea.value = message;
+	textArea.value += message + " \n";
 	textArea.scrollTop = textArea.scrollHeight;
 }
 
-function appendInitLogMessage(message) {
+function clearInitLog() {
 	var textArea = document.getElementById("message-log-text");
-	textArea.value += message;
+	textArea.value = "";
 	textArea.scrollTop = textArea.scrollHeight;
 }
+
+/****** ************************ ******/
 
 async function requestShapes(context) {
 	const data = await fetch(`/api/shapelist?uuid=${context["simUUID"]}`);
@@ -318,17 +286,18 @@ function connectToSimulation(context, uuid) {
 	return connectToServer(context)
 		.then((socket) => { socket.send(JSON.stringify({ "action": "connectto", "data": `${uuid}` })); })
 		.catch(() => {
-			openInitLogWindow(context, "Connection Error");
-			writeInitLogMessage("Failed to connect to server\n");
-			appendInitLogMessage("(Check your browser's developer console for more details)");
+			writeInitLogMessage("Failed to connect to server");
+			writeInitLogMessage("    (Check your browser's developer console for more details)");
+			showInitLog();
 		});
 }
 
 function initializeRenderer(gl, context) {
 	return render.init(gl, context)
 		.catch((err) => {
-			openInitLogWindow(context, "Renderer Error");
-			writeInitLogMessage("An error occured when initializing the renderer\n");
+			writeInitLogMessage("An error occured when initializing the renderer");
+			writeInitLogMessage(`${err}`);
+			showInitLog();
 
 			console.log(err);
 		});
@@ -374,17 +343,23 @@ function connectToServer(context) {
 				setSimName(data.name);
 				setSimMaxCellCount(data.maxSimSize);
 				setStatusFromServer(data.status);
+				clearInitLog();
 
 				await requestShapes(context);
 
 				if (data.crashMessage) {
-					openInitLogWindow(context, "Crash error");
+					writeInitLogMessage("========= CRASH LOG =========");
+					writeInitLogMessage("");
 					writeInitLogMessage(data.crashMessage);
+					showInitLog();
 				}
 
 				if (data.frameCount > 0) {
 					requestFrame(context, 0);
 				}
+			} else if (action == "simlaunch") {
+				clearInitLog();
+				writeInitLogMessage("New simulation launched");
 			} else if (action === "newframe") {
 				const frameCount = data["frameCount"];
 
@@ -405,18 +380,14 @@ function connectToServer(context) {
 				}
 			} else if (action === "newshape") {
 				await requestShapes(context);
-			} else if (action === "infolog") {
-				openInitLogWindow(context, "Initialization Log");
-				writeInitLogMessage(data);
 			} else if (action === "status_change") {
 				setStatusFromServer(data);
 			} else if (action === "error_message") {
-				openInitLogWindow(context, "Error Log");
+				writeInitLogMessage("\n!!! A fatal error has occured !!!\n");
 				writeInitLogMessage(data);
+				showInitLog();
 
 				setStatusMessage("Fatal Error");
-			} else if (action === "closeinfolog") {
-				closeInitLogWindow(context, true);
 			}
 		};
 		
@@ -430,32 +401,24 @@ function connectToServer(context) {
 }
 
 function reloadSimulation(context) {
-	closeInitLogWindow(context, true);
-
 	if (context["commsSocket"] !== null) {
 		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
 	}
 }
 
 function startSimulation(context) {
-	closeInitLogWindow(context, true);
-
 	if (context["commsSocket"] !== null) {
 		context["commsSocket"].send(JSON.stringify({ "action": "start", "data": "" }));
 	}
 }
 
 function pauseSimulation(context) {
-	closeInitLogWindow(context, true);
-
 	if (context["commsSocket"] !== null) {
 		context["commsSocket"].send(JSON.stringify({ "action": "pause", "data": "" }));
 	}
 }
 
 function stopSimulation(context) {
-	closeInitLogWindow(context, true);
-
 	if (context["commsSocket"] !== null) {
 		context["commsSocket"].send(JSON.stringify({ "action": "stop", "data": "" }));
 	}
@@ -515,147 +478,26 @@ async function updateCellInfo(context) {
 				cellText += `<tr><td>${key}</td><td>${text}</td></tr>`;
 			}
 
-			cellDetailsHeader.style.display = "table-row-group";
-			cellDetailsSection.style.display = "table-row-group";
+			cellDetailsHeader.style.display = "flex";
+			cellDetailsSection.style.display = "flex";
 
 			cellDetailsSection.innerHTML = cellText;
 		} else {
 			console.error(`Error when cell info: ${cellData.status} - ${cellData.statusText}`);
 
-			cellDetailsHeader.style.display = "table-row-group";
-			cellDetailsSection.style.display = "table-row-group";
+			cellDetailsHeader.style.display = "flex";
+			cellDetailsSection.style.display = "flex";
 
 			cellDetailsSection.innerHTML = `<td colspan="2" style="text-align: center;">Failed to fetch cell data</td>`;
 		}
 	}
 }
 
-function doMousePick(context) {
-	// https://iquilezles.org/articles/intersectors/
-	function capIntersect(ro, rd, pa, pb, ra) {
-		const ba = vec3.sub(vec3.create(), pb, pa);
-		const oa = vec3.sub(vec3.create(), ro, pa);
-		const baba = vec3.dot(ba, ba);
-		const bard = vec3.dot(ba, rd);
-		const baoa = vec3.dot(ba, oa);
-		const rdoa = vec3.dot(rd, oa);
-		const oaoa = vec3.dot(oa, oa);
-		let a = baba - bard * bard;
-		let b = baba * rdoa - baoa * bard;
-		let c = baba * oaoa - baoa * baoa - ra * ra * baba;
-		let h = b * b - a * c;
-
-		if (h >= 0.0) {
-			const t = (-b - Math.sqrt(h)) / a;
-			const y = baoa + t * bard;
-
-			// body
-			if (y > 0.0 && y < baba) return t;
-
-			// caps
-			const oc = (y <= 0.0) ? oa : vec3.sub(vec3.create(), ro, pb);
-			b = vec3.dot(rd, oc);
-			c = vec3.dot(oc, oc) - ra * ra;
-			h = b * b - c;
-
-			if (h > 0.0) return -b - Math.sqrt(h);
-		}
-
-		return -1.0;
-	}
-
-	//const t0 = performance.now();
-
-	const currentFrame = context["currentFrame"];
-	const camera = context["camera"];
-
-	const mouseX = context["input"]["lastMouseX"];
-	const mouseY = context["input"]["lastMouseY"];
-
-	const viewportWidth = camera["width"];
-	const viewportHeight = camera["height"];
-
-	const ndcX = 2.0 * (mouseX / viewportWidth) - 1.0;
-	const ndcY = 1.0 - 2.0 * (mouseY / viewportHeight);
-	const clipCoords = vec4.fromValues(ndcX, ndcY, -1.0, 1.0);
-
-	const projectionMatrix = camera["projectionMatrix"];
-	const invProjectionMatrix = mat4.invert(mat4.create(), projectionMatrix)
-	const eyeCoords = vec4.transformMat4(vec4.create(), clipCoords, invProjectionMatrix);
-	const viewCoords = vec4.fromValues(eyeCoords[0], eyeCoords[1], -1.0, 0.0);
-
-	const viewMatrix = camera["viewMatrix"];
-	const invViewMatrix = mat4.invert(mat4.create(), viewMatrix);
-	const worldDir = vec4.transformMat4(vec4.create(), viewCoords, invViewMatrix);
-	const rayDir = vec4.normalize(vec4.create(), worldDir);
-
-	const cameraPos = camera["position"];
-
-	const dataBuffer = currentFrame["cellData"];
-	if (!dataBuffer) return;
-
-	const cellCount = currentFrame["cellCount"];
-	const dataView = new DataView(dataBuffer);
-
-	let minIndex = -1;
-	let minDist = Number.MAX_VALUE;
-
-	for (let i = 0; i < cellCount; i++) {
-		const baseOffset = render.calcCellVertexOffset(i);
-
-		const cellPos = vec3.fromValues(
-			dataView.getFloat32(baseOffset + 0, true),
-			dataView.getFloat32(baseOffset + 4, true),
-			dataView.getFloat32(baseOffset + 8, true),
-		);
-
-		const cellDir = vec3.fromValues(
-			dataView.getFloat32(baseOffset + 12, true),
-			dataView.getFloat32(baseOffset + 16, true),
-			dataView.getFloat32(baseOffset + 20, true),
-		);
-
-		const length = dataView.getFloat32(baseOffset + 24, true);
-		const radius = dataView.getFloat32(baseOffset + 28, true);
-
-		const yaw = Math.atan2(cellDir[0], cellDir[2]);
-		const pitch = Math.acos(cellDir[1]);
-
-		const rotVector = vec3.fromValues(
-			radius * Math.sin(yaw) * Math.sin(pitch),
-			0.5 * Math.cos(pitch),
-			radius * Math.cos(yaw) * Math.sin(pitch)
-		);
-		
-		const cellEnd0 = vec3.scaleAndAdd(vec3.create(), cellPos, rotVector, length);
-		const cellEnd1 = vec3.scaleAndAdd(vec3.create(), cellPos, rotVector, -length);
-
-		const intersectDist = capIntersect(cameraPos, rayDir, cellEnd0, cellEnd1, radius);
-
-		if (intersectDist >= 0 && intersectDist < minDist) {
-			minDist = intersectDist;
-			minIndex = i;
-		}
-	}
-
-	//const t1 = performance.now();
-	//console.log(`Performance: ${t1 - t0}ms (${minIndex}, ${minDist})`);
-
-	context["selectedCellIndex"] = minIndex;
-	context["selectedCellIdentifier"] = minIndex !== -1 ? render.lookupCellIdentifier(dataBuffer, minIndex, cellCount) : undefined;
-
-	updateCellInfo(context);
-}
-
 async function initFrame(gl, context) {
 	setStatusMessage("Initializing");
 
 	context["selectedCellIndex"] = -1;
-	context["selectedCellIdentifier"] = -1;
-	context["isMessageLogOpen"] = false;
-	context["isSettingsWindowOpen"] = false;
-	context["isDownloadOptionsWindowOpen"] = false;
-	
+	context["selectedCellIdentifier"] = -1;	
 	context["isDownloadingFrames"] = false;
 
 	//Initialize current frame data
@@ -674,34 +516,24 @@ async function initFrame(gl, context) {
 	//Initialize camera details
 	context["camera"] = {
 		"orbitCenter": vec3.fromValues(0, 0.0, 0.0),
-		"orbitRadius": 50.0,
+		"orbitRadius": 60.0,
 		"orbitMinRadius": 2.0,
-
-		"orbitLookSensitivity": 0.4,
 		"orbitRadiusSensitivity": 0.02,
+
+		"position": vec3.fromValues(0, 0.0, 0.0),
+		"rotation": quat.fromEuler(quat.create(), -45, 0, 0),//quat.fromEuler(quat.create(), -35, 45, 0),
+
+		"yaw": 0,
+		"pitch": -45,
 
 		"fovAngle": 60.0,
 		"nearZ": 0.1,
 		"farZ": 2000.0,
-		"position": vec3.fromValues(0, 3.0, 10.0),
-		"rotation": quat.create(),
-		"pitch": -90.0,
-		"yaw": 0.0,
 
-		"projectionMatrix": mat4.create(),
+		"projMatrix": mat4.create(),
 		"viewMatrix": mat4.create(),
-
-		"width": 0,
-		"height": 0,
-	};
-
-	//Initialize input details
-	context["input"] = {
-		"orbitButtonPressed": false,
-		"panButtonPressed": false,
-
-		"lastMouseX": 0,
-		"lastMouseY": 0
+		"invProjMatrix": mat4.create(),
+		"invViewMatrix": mat4.create(),
 	};
 
 	//Initialize simulation info
@@ -717,7 +549,7 @@ async function initFrame(gl, context) {
 	context["renderSettings"] = {
 		"depthPeeling": {
 			"enabled": true,
-			"layerCount": 5,
+			"layerCount": 3,
 			"depthCompareBias": 0.000001,
 		},
 		"showOutlines": true,
@@ -741,13 +573,17 @@ async function initFrame(gl, context) {
 
 	context["alwaysUseLatestStep"] = snapToLastCheckbox.checked;
 
+	//Init camera matrices
+	updateCameraView(context);
+	updateProjMatrix(context);
+
 	//Setup viewer buttons
 	const uuid = param__simulationUUID;
 
 	let tempButton = null;
 	if (tempButton = document.getElementById("source-btn")) tempButton.onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
 	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { toggleDownloadOptions(context); };
-	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(context); };	
+	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(); };	
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("start-btn")) tempButton.onclick = (e) => { startSimulation(context); };
 	if (tempButton = document.getElementById("pause-btn")) tempButton.onclick = (e) => { pauseSimulation(context); };
@@ -820,41 +656,146 @@ async function initFrame(gl, context) {
 	await connectToSimulation(context, uuid);
 }
 
-function drawScene(gl, context, delta) {
-	let camera = context["camera"];
-	let cameraPosition = camera["position"];
-	let cameraRotation = camera["rotation"];
+function computeCameraRay(x, y, width, height, invProjMatrix, invViewMatrix) {
+	const ndcX = 2.0 * (x / width) - 1.0;
+	const ndcY = 1.0 - 2.0 * (y / height);
+	const clipCoords = vec4.fromValues(ndcX, ndcY, -1.0, 1.0);
 
-	quat.fromEuler(cameraRotation, camera["pitch"], camera["yaw"], 0);
+	const eyeCoords = vec4.transformMat4(vec4.create(), clipCoords, invProjMatrix);
+	const viewCoords = vec4.fromValues(eyeCoords[0], eyeCoords[1], -1.0, 0.0);
+	const worldDir = vec4.transformMat4(vec4.create(), viewCoords, invViewMatrix);
 
-	let forward = vec3.fromValues(0, 0, 1);
-	vec3.transformQuat(forward, forward, cameraRotation);
-	vec3.scaleAndAdd(cameraPosition, camera["orbitCenter"], forward, camera["orbitRadius"]);
+	return vec3.normalize(vec3.create(), vec3.fromValues(worldDir[0], worldDir[1], worldDir[2]));
+}
 
-	const aspectRatio = gl.canvas.width / gl.canvas.height;
-	const projectionMatrix = mat4.perspective(mat4.create(), glMatrix.toRadian(camera["fovAngle"]), aspectRatio, camera["nearZ"], camera["farZ"]);
+function doMousePick(context, mouseX, mouseY, viewportWidth, viewportHeight) {
+	// https://iquilezles.org/articles/intersectors/
+	function capIntersect(ro, rd, pa, pb, ra) {
+		const ba = vec3.sub(vec3.create(), pb, pa);
+		const oa = vec3.sub(vec3.create(), ro, pa);
+		const baba = vec3.dot(ba, ba);
+		const bard = vec3.dot(ba, rd);
+		const baoa = vec3.dot(ba, oa);
+		const rdoa = vec3.dot(rd, oa);
+		const oaoa = vec3.dot(oa, oa);
+		let a = baba - bard * bard;
+		let b = baba * rdoa - baoa * bard;
+		let c = baba * oaoa - baoa * baoa - ra * ra * baba;
+		let h = b * b - a * c;
 
+		if (h >= 0.0) {
+			const t = (-b - Math.sqrt(h)) / a;
+			const y = baoa + t * bard;
+
+			// body
+			if (y > 0.0 && y < baba) return t;
+
+			// caps
+			const oc = (y <= 0.0) ? oa : vec3.sub(vec3.create(), ro, pb);
+			b = vec3.dot(rd, oc);
+			c = vec3.dot(oc, oc) - ra * ra;
+			h = b * b - c;
+
+			if (h > 0.0) return -b - Math.sqrt(h);
+		}
+
+		return -1.0;
+	}
+
+//	const t0 = performance.now();
+
+	const currentFrame = context["currentFrame"];
+	
+	const camera = context["camera"];
+	const cameraPos = camera["position"];
+	const cameraRay = computeCameraRay(mouseX, mouseY, viewportWidth, viewportHeight, camera["invProjMatrix"], camera["invViewMatrix"]);
+
+	const dataBuffer = currentFrame["cellData"];
+	if (!dataBuffer) return;
+
+	const cellCount = currentFrame["cellCount"];
+	const dataView = new DataView(dataBuffer);
+
+	let minIndex = -1;
+	let minDist = Number.MAX_VALUE;
+
+	for (let i = 0; i < cellCount; i++) {
+		const baseOffset = render.calcCellVertexOffset(i);
+
+		const cellPos = vec3.fromValues(
+			dataView.getFloat32(baseOffset + 0, true),
+			dataView.getFloat32(baseOffset + 4, true),
+			dataView.getFloat32(baseOffset + 8, true),
+		);
+
+		const cellDir = vec3.fromValues(
+			dataView.getFloat32(baseOffset + 12, true),
+			dataView.getFloat32(baseOffset + 16, true),
+			dataView.getFloat32(baseOffset + 20, true),
+		);
+
+		const length = dataView.getFloat32(baseOffset + 24, true);
+		const radius = dataView.getFloat32(baseOffset + 28, true);
+
+		const yaw = Math.atan2(cellDir[0], cellDir[2]);
+		const pitch = Math.acos(cellDir[1]);
+
+		const rotVector = vec3.fromValues(
+			radius * Math.sin(yaw) * Math.sin(pitch),
+			0.5 * Math.cos(pitch),
+			radius * Math.cos(yaw) * Math.sin(pitch)
+		);
+		
+		const cellEnd0 = vec3.scaleAndAdd(vec3.create(), cellPos, rotVector, length);
+		const cellEnd1 = vec3.scaleAndAdd(vec3.create(), cellPos, rotVector, -length);
+
+		const intersectDist = capIntersect(cameraPos, cameraRay, cellEnd0, cellEnd1, radius);
+
+		if (intersectDist >= 0 && intersectDist < minDist) {
+			minDist = intersectDist;
+			minIndex = i;
+		}
+	}
+
+//	const t1 = performance.now();
+//	console.log(`Performance: ${t1 - t0}ms (${minIndex}, ${minDist})`);
+
+	context["selectedCellIndex"] = minIndex;
+	context["selectedCellIdentifier"] = minIndex !== -1 ? render.lookupCellIdentifier(dataBuffer, minIndex, cellCount) : undefined;
+
+	updateCellInfo(context);
+}
+
+function updateProjMatrix(context) {
+	const camera = context["camera"];
+	const aspectRatio = context["graphics"]["targetWidth"] / context["graphics"]["targetHeight"];
+
+	camera["projMatrix"] = mat4.perspective(mat4.create(), glMatrix.toRadian(camera["fovAngle"]), aspectRatio, camera["nearZ"], camera["farZ"]);
+	camera["invProjMatrix"] = mat4.invert(mat4.create(), camera["projMatrix"]);
+}
+
+function updateCameraView(context) {
+	const camera = context["camera"];
+
+	//Update the camera position
+	const orbitCenter = camera["orbitCenter"];
+	const orbitRadius = camera["orbitRadius"];
+	const orientVector = vec3.transformQuat(vec3.create(), vec3.fromValues(0, 0, -1), camera["rotation"]);
+
+	camera["position"] = vec3.scaleAndAdd(vec3.create(), orbitCenter, orientVector, -orbitRadius);
+
+	//Update the view matrix
 	const viewMatrix = mat4.create();
-	mat4.transpose(viewMatrix, mat4.fromQuat(mat4.create(), cameraRotation));
-	mat4.translate(viewMatrix, viewMatrix, vec3.negate(vec3.create(), cameraPosition));
+	mat4.transpose(viewMatrix, mat4.fromQuat(mat4.create(), camera["rotation"]));
+	mat4.translate(viewMatrix, viewMatrix, vec3.negate(vec3.create(), camera["position"]));
 
-	camera["position"] = cameraPosition;
-	camera["rotation"] = cameraRotation;
-	camera["projectionMatrix"] = projectionMatrix;
 	camera["viewMatrix"] = viewMatrix;
-
-	render.drawFrame(gl, context, delta);
+	camera["invViewMatrix"] = mat4.invert(mat4.create(), camera["viewMatrix"]);
 }
 
 function resizeCanvas(gl, context, canvas) {
-	const canvasWidth = context["graphics"]["currentWidth"];
-	const canvasHeight = context["graphics"]["currentHeight"];
-
-	canvas.width = canvasWidth;
-	canvas.height = canvasHeight;
-
-	context["camera"]["width"] = canvasWidth;
-	context["camera"]["height"] = canvasHeight;
+	canvas.width = context["graphics"]["currentWidth"];
+	canvas.height = context["graphics"]["currentHeight"];
 
 	render.resize(gl, context, canvas);
 }
@@ -864,54 +805,72 @@ function processKeyButton(event, context, isdown) {
 }
 
 function processMouseMove(event, context) {
-	var input = context["input"];
+	/*
+	 Structure of `event.buttons`:
+	     Bit 0: Primary button (usually the left button)
+	     Bit 1: Secondary button (usually the right button)
+	     Bit 2: Auxiliary button (usually the mouse wheel button or middle button)
+	     Bit 3: 4th button (typically the "Browser Back" button)
+	     Bit 4: 5th button (typically the "Browser Forward" button)
+	*/
+	const orbitButtonPressed = (event.buttons & (1 << 0)) && !event.shiftKey;
+	const panButtonPressed = event.buttons & (1 << 1);
+	
+	const graphics = context["graphics"];
+	const viewportWidth = graphics["targetWidth"];
+	const viewportHeight = graphics["targetHeight"];
 
-	//offsetX and offsetY are in CSS pixels (I think). This means that if you zoom in
-	//the offsets will be scaled down, even if you are cliking on the same pixel. So,
-	//we need to scale them back up
-	const canvas = context["graphics"]["canvas"];
-	const mouseX = event.offsetX * (context["graphics"]["targetWidth"] / canvas.clientWidth);
-	const mouseY = event.offsetY * (context["graphics"]["targetHeight"] / canvas.clientHeight);
+	const mouseXScale = viewportWidth / graphics["canvas"].clientWidth;
+	const mouseYScale = viewportHeight / graphics["canvas"].clientHeight;
 
-	const deltaX = mouseX - input["lastMouseX"];
-	const deltaY = mouseY - input["lastMouseY"];
+	const lastX = (event.offsetX - event.movementX) * mouseXScale;
+	const lastY = (event.offsetY - event.movementY) * mouseYScale;
 
-	input["lastMouseX"] = mouseX;
-	input["lastMouseY"] = mouseY;
-
-	//Do not process input if the log window is open
-	if (context["isMessageLogOpen"]) return;
+	const nextX = event.offsetX * mouseXScale;
+	const nextY = event.offsetY * mouseYScale;
 
 	//Move orbit
+	const planeNormal = vec3.fromValues(0, 1, 0);
+
 	const camera = context["camera"];
+	const cameraPos = camera["position"];
+	
+	if (panButtonPressed) {
+		const cameraRayLast = computeCameraRay(lastX, lastY, viewportWidth, viewportHeight, camera["invProjMatrix"], camera["invViewMatrix"]);
+		const cameraRayNext = computeCameraRay(nextX, nextY, viewportWidth, viewportHeight, camera["invProjMatrix"], camera["invViewMatrix"]);
 
-	if (input["orbitButtonPressed"]) {
-		const sensitivity = camera["orbitLookSensitivity"];
-
-		camera["yaw"] = (camera["yaw"] - sensitivity * deltaX) % 360.0;
-		camera["pitch"] = (camera["pitch"] - sensitivity * deltaY) % 360.0;
-	} else if (input["panButtonPressed"]) {
-		const cameraRotation = camera["rotation"];
-
-		const sensitivity = 0.08;
+		const rayDistLast = -vec3.dot(cameraPos, planeNormal) / vec3.dot(cameraRayLast, planeNormal);
+		const rayDistNext = -vec3.dot(cameraPos, planeNormal) / vec3.dot(cameraRayNext, planeNormal);
 		
-		//Update up direction
-		const sensY = sensitivity * deltaY;
+		if (rayDistLast < 0 || rayDistNext < 0)
+			return;
 
-		const up = vec3.fromValues(0, 1, 0);
-		vec3.transformQuat(up, up, cameraRotation);
-		vec3.multiply(up, up, vec3.fromValues(sensY, sensY, sensY));
-		
-		vec3.add(camera["orbitCenter"], up, camera["orbitCenter"]);
+		const planePosLast = vec3.scaleAndAdd(vec3.create(), cameraPos, cameraRayLast, rayDistLast);
+		const planePosNext = vec3.scaleAndAdd(vec3.create(), cameraPos, cameraRayNext, rayDistNext);
 
-		//Update right direction
-		const sensX = -sensitivity * deltaX;
+		const planePosDiff = vec3.sub(vec3.create(), planePosLast, planePosNext);
+		const planePosDiffLength = vec3.length(planePosDiff);
 
-		const right = vec3.fromValues(1, 0, 0);
-		vec3.transformQuat(right, right, cameraRotation);
-		vec3.multiply(right, right, vec3.fromValues(sensX, sensX, sensX));
+		let orbitPosOffset = planePosDiff;
 
-		vec3.add(camera["orbitCenter"], right, camera["orbitCenter"]);
+		if (planePosDiffLength != 0) {
+			//When the camera is looking at the ground plane from a shallow angle, the magnitude of the movement vector
+			//can become very large and make controlling the camera very difficult. To alleviate this, we'll cap the magintude.
+			orbitPosOffset = vec3.scale(vec3.create(), planePosDiff, Math.min(planePosDiffLength, 40) / planePosDiffLength);
+		}
+
+		camera["orbitCenter"] = vec3.add(vec3.create(), camera["orbitCenter"], orbitPosOffset);
+
+		updateCameraView(context);
+	} else if (orbitButtonPressed) {
+		const sensitivity = 0.2;
+
+		camera["yaw"] = (camera["yaw"] - sensitivity * event.movementX) % 360.0;
+		camera["pitch"] = (camera["pitch"] - sensitivity * event.movementY) % 360.0;
+
+		camera["rotation"] = quat.fromEuler(quat.create(), camera["pitch"], camera["yaw"], 0);
+
+		updateCameraView(context);
 	}
 }
 
@@ -919,16 +878,16 @@ function processMouseButton(event, context, isdown) {
 	event.stopPropagation();
 	event.preventDefault();
 
-	switch (event.button) {
-	case 0:
-		if (isdown && event.shiftKey) 
-			doMousePick(context);
+	if (event.button == 0 && isdown && event.shiftKey) {
+		const graphics = context["graphics"];
 
-		context["input"]["orbitButtonPressed"] = isdown && !event.shiftKey;
-		break;
-	case 2:
-		context["input"]["panButtonPressed"] = isdown;
-		break;
+		const viewportWidth = graphics["targetWidth"];
+		const viewportHeight = graphics["targetHeight"];
+
+		const mouseX = event.offsetX * (viewportWidth / graphics["canvas"].clientWidth);
+		const mouseY = event.offsetY * (viewportHeight / graphics["canvas"].clientHeight);
+
+		doMousePick(context, mouseX, mouseY, viewportWidth, viewportHeight);
 	}
 
 	if (isdown) {
@@ -947,6 +906,8 @@ function processMouseWheel(event, context) {
 	radius = Math.max(radius, camera["orbitMinRadius"]);
 
 	camera["orbitRadius"] = radius;
+
+	updateCameraView(context);
 }
 
 function attachResizeBehavior(context, canvas) {
@@ -976,9 +937,11 @@ function attachResizeBehavior(context, canvas) {
 			height = entry.contentRect.height;
 			dpr = window.devicePixelRatio;
 		}
-		
+
 		context["graphics"]["targetWidth"] = Math.round(width * dpr);
 		context["graphics"]["targetHeight"] = Math.round(height * dpr);
+
+		updateProjMatrix(context);
 	}
 
 	//Observe resize behavior
@@ -1028,14 +991,10 @@ async function main() {
 	canvas.addEventListener("wheel", e => processMouseWheel(e, context));
 	canvas.addEventListener("contextmenu", e => { e.preventDefault() });
 
-	//Initialize elements
-	document.getElementById("message-log-close").onclick = () => closeInitLogWindow(context, false);
-	document.getElementById("settings-close").onclick = () => closeSettings(context);
-
 	//Initialize render loop
 	var lastTime = 0;
 
-	function render(now) {
+	function renderFrame(now) {
 		//Check if a resize is needed
 		const graphics = context["graphics"];
 
@@ -1052,12 +1011,12 @@ async function main() {
 		const delta = (now - lastTime) * 0.001;
 		lastTime = now;
 
-		drawScene(gl, context, delta);
+		render.drawFrame(gl, context, delta);
 
-		window.requestAnimationFrame(render);
+		window.requestAnimationFrame(renderFrame);
 	}
 	
-	window.requestAnimationFrame(render);
+	window.requestAnimationFrame(renderFrame);
 }
 
 window.onload = main;

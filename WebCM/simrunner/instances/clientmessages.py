@@ -1,3 +1,7 @@
+class SimLaunch:
+	def __init__(self):
+		pass
+
 class NewFrame:
 	def __init__(self, frame_count):
 		self.frame_count = frame_count

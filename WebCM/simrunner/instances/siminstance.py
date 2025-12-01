@@ -48,6 +48,7 @@ class SimulationInstance:
 	def launch(self):
 		archiver.update_cached_instance_index(self.uuid, archiver.init_empty_instance_index())
 
+		self.send_message_to_clients(clientmessages.SimLaunch())
 		self.send_message_to_clients(clientmessages.Status(self.current_status))
 		self.send_message_to_clients(clientmessages.NewFrame(0))
 
@@ -97,6 +98,11 @@ class SimulationInstance:
 		elif action == "status":
 			self.current_status = data
 			self.send_message_to_clients(clientmessages.Status(self.current_status))
+		elif action == "reload":
+			self.current_status = "reloading"
+			self.send_message_to_clients(clientmessages.Status(self.current_status))
+			self.send_message_to_clients(clientmessages.NewFrame(0))
+			self.send_message_to_clients(clientmessages.SimLaunch())
 		elif action == "source_request":
 			source_content = archiver.update_and_fetch_simulation_source(self.uuid)
 
@@ -303,9 +309,7 @@ def instance_control_thread(pipe, instance_params):
 			if needs_reload:
 				needs_reload = False
 
-				send_message_to_control({ "status": "reloading" })
-				send_message_to_control({ "newframe": { "frame_count": 0, "new_data": archiver.init_empty_instance_index() } })
-
+				send_message_to_control({ "reload": "" })
 				continue
 
 			# If the simulation ends by itself (i.e. it finishes), we don't want to keep running the instance

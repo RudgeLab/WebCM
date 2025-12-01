@@ -405,9 +405,13 @@ def delete_simulation(request):
 		return HttpResponseBadRequest("No simulation UUID provided")
 
 	sim_id = UUID(request.GET["uuid"])
+	simulation = models.lookup_simulation(sim_id)
 
-	if models.lookup_simulation(sim_id) is None:
+	if simulation is None:
 		return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
+
+	if simulation.owner != request.user:
+		return HttpResponseBadRequest(f"Simluation not owned by user")
 
 	manager.delete_simulation(sim_id)
 

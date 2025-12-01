@@ -25,7 +25,7 @@
 						</div>
 						<ul id="timeline-controls">
 							<li>
-								<div id="flex-row" class="center-children item-background"><p id="status-label">Status: Offline</p></div>
+								<div class="center-children item-background"><p id="status-label">Status: Offline</p></div>
 							</li>
 							<li class="item-background">
 								<div class="center-children"><p id="sim-name" class="center-children">Name: No Simulation</p></div>
@@ -43,24 +43,15 @@
 			</div>
 
 			<div id="viewer-details" class="item-background">
-				<table>
-					<tbody>
-						<tr><td colspan="2">
-							<div class="section-header"><span></span><span>Simulation details</span><span></span></div>
-						</td></tr>
-					</tbody>
-					<tbody class="details-keyvalue-table">
-						<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
-						<tr><td>Maximum size</td><td id="simdets-maxcellcount">None</td></tr>
-					</tbody>
-					<tbody id="cell-details-header">
-						<tr><td colspan="2">
-							<div class="section-header"><span></span><span>Cell Information</span><span></span></div>
-						</td></tr>
-					</tbody>
-					<tbody id="cell-details-section" class="details-keyvalue-table">
-						<tr><td>Index</td><td>N/A</td></tr>
-					</tbody>
+				<div class="section-header"><span></span><span>Simulation details</span><span></span></div>
+				<table class="details-keyvalue-table">
+					<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
+					<tr><td>Maximum size</td><td id="simdets-maxcellcount">None</td></tr>
+				</table>
+
+				<div id="cell-details-header" class="section-header"><span></span><span>Cell Information</span><span></span></div>
+				<table id="cell-details-section" class="details-keyvalue-table">
+					<tr><td>Index</td><td>N/A</td></tr>
 				</table>
 			</div>
 			<div id="button-container" class="item-background">
@@ -92,9 +83,9 @@
 			</div>
 			<div id="message-log-container" class="item-background overlay-window-centered">
 				<div class="overlay-window-backbone">
-					<div class="overlay-window-header">
-						<p id="message-log-title">Initialization Log</p>
-						<p id="message-log-close" class="cursor-pointer">[x]</p>
+					<div class="log-window-header">
+						<p>Simulation Log</p>
+						<p class="cursor-pointer" onclick="closeInitLog()">[x]</p>
 					</div>
 					<textarea id="message-log-text" readonly></textarea>
 				</div>
@@ -102,10 +93,16 @@
 
 			<div id="settings-container" class="item-background overlay-window-centered">
 				<div class="overlay-window-backbone">
-					<div class="overlay-window-header">
-						<div class="section-header" style="flex:1"><span></span><span>Settings window</span><span></span></div>
-						<p id="settings-close" class="cursor-pointer" style="padding-left:0">[x]</p>
+
+					<!-- Window header -->
+					<div class="overlay-window-header" style="margin-bottom: 0">
+						<span></span>
+						<p>Settings window</p>
+						<div>
+							<span></span><p class="cursor-pointer" style="padding-left:0" onclick="closeSettings()">[x]</p>
+						</div>
 					</div>
+
 					<div id="settings-inputs-box">
 						<table>
 							<tbody class="details-keyvalue-table">
@@ -129,30 +126,6 @@
 								</td></tr>
 							</tbody>
 						</table>
-					</div>
-				</div>
-			</div>
-
-			<div id="download-options-container" class="item-background overlay-window-centered">
-				<div class="overlay-window-backbone">
-					<div class="overlay-window-header">
-						<div class="section-header" style="flex:1"><span></span><span>Download options</span><span></span></div>
-					</div>
-					<div id="download-options-inputs-box">
-						<table>
-							<tbody class="details-keyvalue-table">
-								<tr><td>Download from</td><td>
-									<input type="number" id="download-range-start-input" min="1" step="1" value="1">
-								</td></tr>
-								<tr><td>Download to</td><td>
-									<input type="number" id="download-range-end-input" min="1" step="1" value="1">
-								</td></tr>
-							</tbody>
-						</table>
-						<div style="display:flex">
-							<button id="download-options-confirm" class="grey-button" style="flex:1">Download</button>
-							<button id="download-options-cancel" class="grey-button" style="flex:1">Cancel</button>
-						</div>
 					</div>
 				</div>
 			</div>
