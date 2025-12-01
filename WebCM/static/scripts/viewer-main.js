@@ -34,31 +34,50 @@ function setStatusFromServer(message) {
 function showSettings() { closeAll(); document.getElementById("settings-container").style.display = "inline"; }
 function closeSettings() {            document.getElementById("settings-container").style.display = "none"; }
 
-function showInitLog() { closeAll(); document.getElementById("message-log-container").style.display = "inline"; }
-function closeInitLog() {            document.getElementById("message-log-container").style.display = "none"; }
+function showServerLog() { closeAll(); document.getElementById("message-log-container").style.display = "inline"; }
+function closeServerLog() {            document.getElementById("message-log-container").style.display = "none"; }
+
+function showPlayback() { closeAll(); document.getElementById("playback-container").style.display = "inline"; }
+function closePlayback() {            document.getElementById("playback-container").style.display = "none"; }
 
 window.closeSettings = closeSettings;
-window.closeInitLog = closeInitLog;
+window.closeServerLog = closeServerLog;
+window.closePlayback = closePlayback;
 
 function closeAll() {
 	closeSettings();
-	closeInitLog();
+	closeServerLog()
+	closePlayback();
 }
 
 function toggleSettings() {
-	if (document.getElementById("settings-container").style.display != "none")
+	if (document.getElementById("settings-container").style.display == "inline")
 		closeSettings()
 	else
 		showSettings();
 }
 
-function writeInitLogMessage(message) {
+function toggleServerLog() {
+	if (document.getElementById("message-log-container").style.display == "inline")
+		closeServerLog()
+	else
+		showServerLog();
+}
+
+function togglePlayback() {
+	if (document.getElementById("playback-container").style.display == "inline")
+		closePlayback()
+	else
+		showPlayback();
+}
+
+function writeServerLogMessage(message) {
 	var textArea = document.getElementById("message-log-text");
 	textArea.value += message + " \n";
 	textArea.scrollTop = textArea.scrollHeight;
 }
 
-function clearInitLog() {
+function clearServerLog() {
 	var textArea = document.getElementById("message-log-text");
 	textArea.value = "";
 	textArea.scrollTop = textArea.scrollHeight;
@@ -193,263 +212,6 @@ async function onFrameReceived(context, index, frameResponse) {
 	await updateCellInfo(context);
 }
 
-async function confirmDownload(context) {
-	if (context["isDownloadingFrames"]) {
-		alert("Cannot start a new download while another is in progress");
-		return;
-	}
-
-	const frameCount = context["simInfo"].frameCount;
-	let startValue = document.getElementById("download-range-start-input").value;
-	let endValue = document.getElementById("download-range-end-input").value;
-
-	if (startValue <= 0 || startValue > frameCount) {
-		alert(`Start value must be between 1 and ${frameCount}`);
-		return;
-	}
-
-	if (endValue <= 0 || endValue > frameCount) {
-		alert(`End value must be between 1 and ${frameCount}`);
-		return;
-	}
-
-	if (endValue < startValue) {
-		const temp = endValue;
-		endValue = startValue;
-		startValue = temp;
-	}
-
-	closeDownloadOptions(context);
-
-	//Start download
-	context["isDownloadingFrames"] = true;
-
-	const downloadCount = endValue - startValue + 1;
-	const downloadFirstIndex = startValue - 1;
-	const uuid = context["simUUID"];
-	const simName = context["simInfo"].name;
-
-	const finalBlobContainer = new zip.BlobWriter();
-	const zipWriter = new zip.ZipWriter(finalBlobContainer);
-
-	const downloadBtn = document.getElementById("download-btn");
-	downloadBtn.textContent = `0 / ${downloadCount} `;	
-	downloadBtn.style.pointerEvents = "none";
-
-	let failed = false;
-
-	for (let i = 0; i < downloadCount; i++) {
-		const filename = `step-${downloadFirstIndex + i + 1}.cm5_step`
-		
-		const response = await fetch(`/api/cellstates?uuid=${uuid}&index=${downloadFirstIndex + i}`);
-		if (!response.ok) {
-			console.log(`Error when downloading step: ${response.status}:${response.statusText}`);
-
-			failed = true;
-			break;
-		}
-		
-		const cellData = await response.blob();
-		const cellDataReader = new zip.BlobReader(cellData);
-		await zipWriter.add(filename, cellDataReader);
-
-		downloadBtn.textContent = `${i + 1} / ${downloadCount} `;	
-	}
-
-	await zipWriter.close();
-
-	if (failed) {
-		downloadBtn.style.pointerEvents = "";
-		downloadBtn.textContent = "Failed to download";
-		context["isDownloadingFrames"] = false;
-
-		return;
-	}
-
-	downloadBtn.textContent = "Packaging...";
-
-	const zippedData = await finalBlobContainer.getData();
-	const dataURL = URL.createObjectURL(zippedData);
-
-	const downloaderLink = document.getElementById("downloader-link");
-	downloaderLink.href = dataURL;
-	downloaderLink.download = `${simName}.zip`;
-	downloaderLink.click();
-	URL.revokeObjectURL(dataURL);
-
-	downloadBtn.style.pointerEvents = "";
-	downloadBtn.textContent = "Download";
-	context["isDownloadingFrames"] = false;
-}
-
-function connectToSimulation(context, uuid) {
-	return connectToServer(context)
-		.then((socket) => { socket.send(JSON.stringify({ "action": "connectto", "data": `${uuid}` })); })
-		.catch(() => {
-			writeInitLogMessage("Failed to connect to server");
-			writeInitLogMessage("    (Check your browser's developer console for more details)");
-			showInitLog();
-		});
-}
-
-function initializeRenderer(gl, context) {
-	return render.init(gl, context)
-		.catch((err) => {
-			writeInitLogMessage("An error occured when initializing the renderer");
-			writeInitLogMessage(`${err}`);
-			showInitLog();
-
-			console.log(err);
-		});
-}
-
-function connectToServer(context) {
-	return new Promise((resolve, reject) => {
-		setStatusMessage("Connecting");
-
-		let commsSocket = null;
-
-		try {
-			commsSocket = new WebSocket(`ws://${window.location.host}/ws/usercomms/`);
-		} catch (err) {
-			reject(err);
-			return;
-		}
-		
-		commsSocket.onopen = function(e) {
-			resolve(commsSocket);
-		};
-
-		commsSocket.onerror = function(err) {
-			reject(err);
-		};
-		
-		commsSocket.onmessage = async function(e) {
-			const message = JSON.parse(e.data);
-
-			const action = message["action"];
-			const data = message["data"];
-
-			if (action === "connectheader") {
-				context["simUUID"] = data["uuid"];
-
-				context["simInfo"] = {};
-				context["simInfo"].name = data.name;
-				context["simInfo"].frameCount = data.frameCount;
-
-				context["timelineSlider"].max = data.frameCount;
-
-				setSimFrame(0, data.frameCount);
-				setSimName(data.name);
-				setSimMaxCellCount(data.maxSimSize);
-				setStatusFromServer(data.status);
-				clearInitLog();
-
-				await requestShapes(context);
-
-				if (data.crashMessage) {
-					writeInitLogMessage("========= CRASH LOG =========");
-					writeInitLogMessage("");
-					writeInitLogMessage(data.crashMessage);
-					showInitLog();
-				}
-
-				if (data.frameCount > 0) {
-					requestFrame(context, 0);
-				}
-			} else if (action == "simlaunch") {
-				clearInitLog();
-				writeInitLogMessage("New simulation launched");
-			} else if (action === "newframe") {
-				const frameCount = data["frameCount"];
-
-				context["simInfo"].frameCount = frameCount;
-				context["timelineSlider"].max = frameCount;
-
-				if (context["alwaysUseLatestStep"]) {
-					if (frameCount == 0) {
-						render.clearFrameData(context);
-						setSimFrame(0, 0);
-					} else {
-						requestFrame(context, frameCount - 1);
-					}
-
-					context["timelineSlider"].value = frameCount;
-				} else {
-					setSimFrame(context["currentFrame"]["frameIndex"], context["simInfo"].frameCount);
-				}
-			} else if (action === "newshape") {
-				await requestShapes(context);
-			} else if (action === "status_change") {
-				setStatusFromServer(data);
-			} else if (action === "error_message") {
-				writeInitLogMessage("\n!!! A fatal error has occured !!!\n");
-				writeInitLogMessage(data);
-				showInitLog();
-
-				setStatusMessage("Fatal Error");
-			}
-		};
-		
-		commsSocket.onclose = (e) => {
-			setStatusMessage("Connection Lost");
-			context["commsSocket"] = null;
-		};
-
-		context["commsSocket"] = commsSocket;
-	});
-}
-
-function reloadSimulation(context) {
-	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
-	}
-}
-
-function startSimulation(context) {
-	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "start", "data": "" }));
-	}
-}
-
-function pauseSimulation(context) {
-	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "pause", "data": "" }));
-	}
-}
-
-function stopSimulation(context) {
-	if (context["commsSocket"] !== null) {
-		context["commsSocket"].send(JSON.stringify({ "action": "stop", "data": "" }));
-	}
-}
-
-function processTimelineChange(value, context) {
-	//NOTE: When someone re-opens a closed tab, the web browser may send an oninput
-	//event. This might happen before "simUUID" has been set, so we end sending "undefined" as the UUID
-	if (context["simUUID"] != undefined) {
-		requestFrame(context, value - 1);
-	}
-}
-
-function customFormat(value) {
-	if (typeof value == 'number') {
-		const magnitude = Math.pow(10, 5);
-
-		return String(Math.floor(value * magnitude) / magnitude);
-	} else if (Array.isArray(value)) {
-		let content = "";
-
-		for (let i = 0; i < value.length; i++) {
-			content += customFormat(value[i]);
-
-			if (i + 1 < value.length) content += ", ";
-		}
-
-		return "[ " + content + " ]";
-	}
-}
-
 async function updateCellInfo(context) {
 	const cellIndex = context["selectedCellIndex"];
 
@@ -493,12 +255,225 @@ async function updateCellInfo(context) {
 	}
 }
 
+function connectToSimulation(context, uuid) {
+	return createServerConnection(context)
+		.then((socket) => { socket.send(JSON.stringify({ "action": "connectto", "data": `${uuid}` })); })
+		.catch(() => {
+			writeServerLogMessage("Failed to connect to server");
+			writeServerLogMessage("    (Check your browser's developer console for more details)");
+			showServerLog();
+		});
+}
+
+function initializeRenderer(gl, context) {
+	return render.init(gl, context)
+		.catch((err) => {
+			writeServerLogMessage("An error occured when initializing the renderer");
+			writeServerLogMessage(`${err}`);
+			showServerLog();
+
+			console.log(err);
+		});
+}
+
+function createServerConnection(context) {
+	return new Promise((resolve, reject) => {
+		setStatusMessage("Connecting");
+
+		let commsSocket = null;
+
+		try {
+			commsSocket = new WebSocket(`ws://${window.location.host}/ws/usercomms/`);
+		} catch (err) {
+			reject(err);
+			return;
+		}
+		
+		commsSocket.onopen = function(e) {
+			resolve(commsSocket);
+		};
+
+		commsSocket.onerror = function(err) {
+			reject(err);
+		};
+		
+		commsSocket.onmessage = async function(e) {
+			const message = JSON.parse(e.data);
+
+			const action = message["action"];
+			const data = message["data"];
+
+			if (action === "connectheader") {
+				context["simUUID"] = data["uuid"];
+
+				context["simInfo"] = {};
+				context["simInfo"].name = data.name;
+				context["simInfo"].frameCount = data.frameCount;
+
+				context["timelineSlider"].max = data.frameCount;
+
+				setSimFrame(0, data.frameCount);
+				setSimName(data.name);
+				setSimMaxCellCount(data.maxSimSize);
+				setStatusFromServer(data.status);
+				clearServerLog();
+
+				await requestShapes(context);
+
+				if (data.crashMessage) {
+					writeServerLogMessage("========= CRASH LOG =========");
+					writeServerLogMessage("");
+					writeServerLogMessage(data.crashMessage);
+					showServerLog();
+				}
+
+				if (data.frameCount > 0) {
+					requestFrame(context, 0);
+				}
+			} else if (action == "simlaunch") {
+				clearServerLog();
+				writeServerLogMessage("New simulation launched");
+			} else if (action === "newframe") {
+				const frameCount = data["frameCount"];
+
+				context["simInfo"].frameCount = frameCount;
+				context["timelineSlider"].max = frameCount;
+
+				if (context["alwaysUseLatestStep"]) {
+					if (frameCount == 0) {
+						render.clearFrameData(context);
+						setSimFrame(0, 0);
+					} else {
+						requestFrame(context, frameCount - 1);
+					}
+
+					context["timelineSlider"].value = frameCount;
+				} else {
+					setSimFrame(context["currentFrame"]["frameIndex"], context["simInfo"].frameCount);
+				}
+			} else if (action === "newshape") {
+				await requestShapes(context);
+			} else if (action === "status_change") {
+				setStatusFromServer(data);
+			} else if (action === "error_message") {
+				writeServerLogMessage("\n!!! A fatal error has occured !!!\n");
+				writeServerLogMessage(data);
+				showServerLog();
+
+				setStatusMessage("Fatal Error");
+			}
+		};
+		
+		commsSocket.onclose = (e) => {
+			setStatusMessage("Connection Lost");
+			context["commsSocket"] = null;
+		};
+
+		context["commsSocket"] = commsSocket;
+	});
+}
+
+function reloadSimulation(context) {
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "reload", "data": "" }));
+	}
+}
+
+function startSimulation(context) {
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "start", "data": "" }));
+	}
+}
+
+function pauseSimulation(context) {
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "pause", "data": "" }));
+	}
+}
+
+function stopSimulation(context) {
+	if (context["commsSocket"] !== null) {
+		context["commsSocket"].send(JSON.stringify({ "action": "stop", "data": "" }));
+	}
+}
+
+function processTimelineChange(context, value) {
+	//NOTE: When someone re-opens a closed tab, the web browser may send an oninput
+	//event. This might happen before "simUUID" has been set, so we end sending "undefined" as the UUID
+	if (context["simUUID"] != undefined) {
+		requestFrame(context, value - 1);
+	}
+}
+
+function beginPlayback(context) {
+	const firstFrameInput = document.getElementById("playback-first-frame");
+	const lastFrameInput = document.getElementById("playback-last-frame");
+	const speedInput = document.getElementById("playback-speed");
+	const backwardsInput = document.getElementById("playback-backwards");
+
+	const frameCount = context["simInfo"].frameCount;
+
+	let firstFrameValue = parseInt(firstFrameInput.value);
+	let lastFrameValue = parseInt(lastFrameInput.value);
+
+	firstFrameValue = !isNaN(firstFrameValue) ? firstFrameValue : 1;
+	lastFrameValue = !isNaN(lastFrameValue) ? lastFrameValue : frameCount;
+
+	firstFrameValue = Math.min(Math.max(firstFrameValue, 1), frameCount);
+	lastFrameValue = Math.min(Math.max(lastFrameValue, 1), frameCount);
+
+	const firstFrameIndex = Math.min(firstFrameValue, lastFrameValue);
+	const lastFrameIndex = Math.max(firstFrameValue, lastFrameValue);
+	const speed = parseFloat(speedInput.value);
+	const backwards = backwardsInput.checked;
+
+	const currentIndex = backwards ? lastFrameIndex : firstFrameIndex;
+
+	context["playbackInfo"] = {
+		"lowestIndex": firstFrameIndex,
+		"highestIndex": lastFrameIndex,
+		"currentIndex": currentIndex,
+		
+		"lastMoveTime": Date.now(),
+		"speed": isNaN(speed) ? 0 : speed,
+		"backwards": backwards,
+	};
+
+	console.log(currentIndex);
+
+	//Update the timeline 
+	document.getElementById("frame-timeline").value = currentIndex;
+
+	processTimelineChange(context, currentIndex);
+	closePlayback();
+}
+
+function customFormat(value) {
+	if (typeof value == 'number') {
+		const magnitude = Math.pow(10, 5);
+
+		return String(Math.floor(value * magnitude) / magnitude);
+	} else if (Array.isArray(value)) {
+		let content = "";
+
+		for (let i = 0; i < value.length; i++) {
+			content += customFormat(value[i]);
+
+			if (i + 1 < value.length) content += ", ";
+		}
+
+		return "[ " + content + " ]";
+	}
+}
+
 async function initFrame(gl, context) {
 	setStatusMessage("Initializing");
 
+	const initOrbitRadius = 60;
+	const initRotation = quat.fromEuler(quat.create(), -45, 0, 0);
+
 	context["selectedCellIndex"] = -1;
 	context["selectedCellIdentifier"] = -1;	
-	context["isDownloadingFrames"] = false;
 
 	//Initialize current frame data
 	context["currentFrame"] = {
@@ -520,8 +495,8 @@ async function initFrame(gl, context) {
 		"orbitMinRadius": 2.0,
 		"orbitRadiusSensitivity": 0.02,
 
-		"position": vec3.fromValues(0, 0.0, 0.0),
-		"rotation": quat.fromEuler(quat.create(), -45, 0, 0),//quat.fromEuler(quat.create(), -35, 45, 0),
+		"position": vec3.fromValues(0, 0, 0),
+		"rotation": initRotation,//quat.fromEuler(quat.create(), -35, 45, 0),
 
 		"yaw": 0,
 		"pitch": -45,
@@ -558,13 +533,23 @@ async function initFrame(gl, context) {
 		"signalVolumeDensity": 1.0,
 	};
 
+	//Initialize playback state
+	context["playbackInfo"] = null;
+
 	//Initialize timeline slider 
 	const timelineSlider = document.getElementById("frame-timeline");
-	timelineSlider.oninput = function() { processTimelineChange(this.value, context); };
 	timelineSlider.min = 1;
 	timelineSlider.max = 1;
 	timelineSlider.step = 1;
 	timelineSlider.value = 0;
+	
+	timelineSlider.oninput = function() {
+		//Stop the playback. This event will only get called when the user intertacts with
+		//the slider (not when we change its value programmatically).
+		context["playbackInfo"] = null;
+
+		processTimelineChange(context, this.value);
+	};
 
 	context["timelineSlider"] = timelineSlider;
 
@@ -577,22 +562,39 @@ async function initFrame(gl, context) {
 	updateCameraView(context);
 	updateProjMatrix(context);
 
-	//Setup viewer buttons
+	//
+	// Setup viewer buttons
+	//
+
+	function resetOrigin() {
+		const camera = context["camera"];
+		camera["orbitCenter"] = vec3.fromValues(0, 0.0, 0.0);
+		camera["orbitRadius"] = initOrbitRadius;
+		camera["rotation"] = initRotation;
+		camera["yaw"] = 0;
+		camera["pitch"] = -45;
+
+		updateCameraView(context);
+	}
+
 	const uuid = param__simulationUUID;
 
 	let tempButton = null;
-	if (tempButton = document.getElementById("source-btn")) tempButton.onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank"); };
-	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { toggleDownloadOptions(context); };
+	if (tempButton = document.getElementById("source-btn")) tempButton.onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank");s };
+	if (tempButton = document.getElementById("playback-begin-btn")) tempButton.onclick = (e) => { beginPlayback(context); };
+	if (tempButton = document.getElementById("reset-origin-btn")) tempButton.onclick = (e) => { resetOrigin(); };
+	if (tempButton = document.getElementById("playback-btn")) tempButton.onclick = (e) => { togglePlayback(); };
+	if (tempButton = document.getElementById("show-log-btn")) tempButton.onclick = (e) => { toggleServerLog(); };
 	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(); };	
 	if (tempButton = document.getElementById("reload-btn")) tempButton.onclick = (e) => { reloadSimulation(context); };
 	if (tempButton = document.getElementById("start-btn")) tempButton.onclick = (e) => { startSimulation(context); };
 	if (tempButton = document.getElementById("pause-btn")) tempButton.onclick = (e) => { pauseSimulation(context); };
 	if (tempButton = document.getElementById("stop-btn")) tempButton.onclick = (e) => { stopSimulation(context); };
 	
-	if (tempButton = document.getElementById("download-options-confirm")) tempButton.onclick = (e) => { confirmDownload(context); };
-	if (tempButton = document.getElementById("download-options-cancel")) tempButton.onclick = (e) => { closeDownloadOptions(context); };
-	
-	//Setup settings inputs
+	//
+	// Setup settings inputs
+	//
+
 	const currentVersion = 1;
 	const renderSettings = context["renderSettings"];
 	
@@ -651,7 +653,10 @@ async function initFrame(gl, context) {
 	document.getElementById("depth-peel-layers-input").onchange = function(e) { renderSettings["depthPeeling"]["layerCount"] = this.value; settingsUpdated(); };
 	document.getElementById("transparency-enabled-input").onchange = function(e) { renderSettings["depthPeeling"]["enabled"] = this.checked; settingsUpdated(); };
 
-	//Initialize the renderer
+	//
+	// Initialize the renderer
+	//
+
 	await initializeRenderer(gl, context);
 	await connectToSimulation(context, uuid);
 }
@@ -1005,6 +1010,38 @@ async function main() {
 			graphics["currentHeight"] = graphics["targetHeight"];
 
 			resizeCanvas(gl, context, canvas);
+		}
+
+		//Process playback
+		const playbackInfo = context["playbackInfo"];
+
+		if (playbackInfo) {
+			//"elapsed" is in milliseconds, but "speed" is in seconds
+			const now = Date.now();
+			const elapsed = (now - playbackInfo["lastMoveTime"]) / 1000;
+			const speed = playbackInfo["speed"];
+
+			if (elapsed >= speed) {
+				//Determine the next frame
+				const incrementCount = speed <= 0 ? 1 : Math.floor(elapsed / speed);
+
+				let nextFrame = playbackInfo["backwards"] ? (playbackInfo["currentIndex"] - incrementCount) : (playbackInfo["currentIndex"] + incrementCount);
+				nextFrame = Math.max(nextFrame, playbackInfo["lowestIndex"]);
+				nextFrame = Math.min(nextFrame, playbackInfo["highestIndex"]);
+
+				playbackInfo["currentIndex"] = nextFrame;
+				playbackInfo["lastMoveTime"] = now;
+
+				//Update the slider
+				document.getElementById("frame-timeline").value = nextFrame;
+				
+				//Process the timeline change
+				processTimelineChange(context, nextFrame);
+
+				//Stop the playback is needed
+				if (playbackInfo["currentIndex"] == playbackInfo["lowestIndex"] || playbackInfo["currentIndex"] == playbackInfo["highestIndex"])
+					context["playbackInfo"] = null;
+			}
 		}
 
 		//Update frame

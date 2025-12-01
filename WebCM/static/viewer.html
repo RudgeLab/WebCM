@@ -43,49 +43,52 @@
 			</div>
 
 			<div id="viewer-details" class="item-background">
-				<div class="section-header"><span></span><span>Simulation details</span><span></span></div>
-				<table class="details-keyvalue-table">
-					<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
-					<tr><td>Maximum size</td><td id="simdets-maxcellcount">None</td></tr>
-				</table>
+				<!-- Window header -->
+				<div class="overlay-window-header">
+					<span></span>
+					<p>Simultion details</p>
+					<div><span></span></div>
+				</div>
+				<div class="overlay-window-body">
 
-				<div id="cell-details-header" class="section-header"><span></span><span>Cell Information</span><span></span></div>
-				<table id="cell-details-section" class="details-keyvalue-table">
-					<tr><td>Index</td><td>N/A</td></tr>
-				</table>
+					<table class="details-keyvalue-table">
+						<tr><td>Cell count</td><td id="simdets-cellcount">0</td></tr>
+						<tr><td>Maximum size</td><td id="simdets-maxcellcount">None</td></tr>
+					</table>
+
+					<div id="cell-details-header" class="section-header"><span></span><span>Cell Information</span><span></span></div>
+					<table id="cell-details-section" class="details-keyvalue-table">
+						<tr><td>Index</td><td>N/A</td></tr>
+					</table>
+
+				</div>
 			</div>
+
 			<div id="button-container" class="item-background">
 				<div>
 					<div style="display:flex;flex-direction:row;">
 						<button id="start-btn" class="grey-button" style="flex:1;">Start</button>
 						<button id="pause-btn" class="grey-button" style="flex:1;">Pause</button>
 					</div>
-					<div style="display:flex;flex-direction:row;">
-						<button id="stop-btn" class="grey-button" style="flex:1;">Stop</button>
-					</div>
-					<div style="display:flex;flex-direction:row;">
-						<button id="reload-btn" class="grey-button" style="flex:1;">Restart</button>
-					</div>
+					<button id="stop-btn" class="grey-button" style="flex:1;">Stop</button>
+					<button id="reload-btn" class="grey-button" style="flex:1;">Restart</button>
 				</div>
-				
-				<div style="display:flex;flex-direction:column">
-					<div style="display:flex;flex-direction:row;">
-						<button id="source-btn" class="grey-button" style="flex:1;">Edit source</button>
-					</div>
-					<div style="display:flex;flex-direction:column;">
-						<button id="settings-btn" class="grey-button">Settings</button>
-					</div>
-					<div style="display:flex;flex-direction:column;">
-						<button id="download-btn" class="grey-button">Download</button>
-						<a id="downloader-link" style="display:none"></a>
-					</div>
+				<div>
+					<button id="source-btn" class="grey-button">Edit source</button>
+					<button id="settings-btn" class="grey-button">Settings</button>
+					<button id="show-log-btn" class="grey-button">Show log</button>
+				</div>
+				<div>
+					<button id="download-btn" class="grey-button">Download</button>
+					<button id="playback-btn" class="grey-button">Playback</button>
+					<button id="reset-origin-btn" class="grey-button">Reset Origin</button>
 				</div>
 			</div>
 			<div id="message-log-container" class="item-background overlay-window-centered">
 				<div class="overlay-window-backbone">
 					<div class="log-window-header">
 						<p>Simulation Log</p>
-						<p class="cursor-pointer" onclick="closeInitLog()">[x]</p>
+						<p class="cursor-pointer" onclick="closeServerLog()">[x]</p>
 					</div>
 					<textarea id="message-log-text" readonly></textarea>
 				</div>
@@ -93,39 +96,72 @@
 
 			<div id="settings-container" class="item-background overlay-window-centered">
 				<div class="overlay-window-backbone">
-
 					<!-- Window header -->
-					<div class="overlay-window-header" style="margin-bottom: 0">
+					<div class="overlay-window-header">
 						<span></span>
 						<p>Settings window</p>
 						<div>
 							<span></span><p class="cursor-pointer" style="padding-left:0" onclick="closeSettings()">[x]</p>
 						</div>
 					</div>
-
-					<div id="settings-inputs-box">
-						<table>
-							<tbody class="details-keyvalue-table">
-								<tr><td>Flat shading</td><td>
-									<input type="checkbox" id="use-flat-shading" checked>
-								</td></tr>
-								<tr><td>Show outlines</td><td>
-									<input type="checkbox" id="show-cell-outlines">
-								</td></tr>
-								<tr><td>Signal grid enabled</td><td>
-									<input type="checkbox" id="signals-enabled-input" checked>
-								</td></tr>
-								<tr><td>Signal grid density</td><td>
-									<input type="number" id="signal-density-input" min="0" value="1" step="0.1">
-								</td></tr>
-								<tr><td>Transparency enabled</td><td>
-									<input type="checkbox" id="transparency-enabled-input" checked>
-								</td></tr>
-								<tr><td>Transparency layers</td><td>
-									<input type="number" id="depth-peel-layers-input" min="0" max="16" value="5">
-								</td></tr>
-							</tbody>
+					<div class="overlay-window-body">
+						
+						<table id="settings-inputs-box" class="details-keyvalue-table details-table-centered-values">
+							<tr><td>Flat shading</td><td>
+								<input type="checkbox" id="use-flat-shading" checked>
+							</td></tr>
+							<tr><td>Show outlines</td><td>
+								<input type="checkbox" id="show-cell-outlines">
+							</td></tr>
+							<tr><td>Signal grid enabled</td><td>
+								<input type="checkbox" id="signals-enabled-input" checked>
+							</td></tr>
+							<tr><td>Signal grid density</td><td>
+								<input type="number" id="signal-density-input" min="0" value="1" step="0.1">
+							</td></tr>
+							<tr><td>Transparency enabled</td><td>
+								<input type="checkbox" id="transparency-enabled-input" checked>
+							</td></tr>
+							<tr><td>Transparency layers</td><td>
+								<input type="number" id="depth-peel-layers-input" min="0" max="16" value="5">
+							</td></tr>
 						</table>
+
+					</div>
+				</div>
+			</div>
+
+			<div id="playback-container" class="item-background overlay-window-centered">
+				<div class="overlay-window-backbone">
+					<!-- Window header -->
+					<div class="overlay-window-header">
+						<span></span>
+						<p>Playback window</p>
+						<div>
+							<span></span><p class="cursor-pointer" style="padding-left:0" onclick="closePlayback()">[x]</p>
+						</div>
+					</div>
+					<div class="overlay-window-body">
+
+						<table id="playback-inputs-box" class="details-keyvalue-table details-table-centered-values">
+							<tr><td>First frame</td><td>
+								<input type="number" id="playback-first-frame" min="1" value="1">
+							</td></tr>
+							<tr><td>Last frame</td><td>
+								<input type="number" id="playback-last-frame" min="1" value="1000">
+							</td></tr>
+							<tr><td>Frame durations (s)</td><td>
+								<input type="number" id="playback-speed" min="0" value="0">
+							</td></tr>
+							<tr><td>Backwards</td><td>
+								<input type="checkbox" id="playback-backwards">
+							</td></tr>
+						</table>
+
+						<div style="display:flex;justify-content:center;margin: 0.3rem 0">
+							<button id="playback-begin-btn">Begin Playback</button>
+						</div>
+
 					</div>
 				</div>
 			</div>
