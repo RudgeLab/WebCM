@@ -1,4 +1,4 @@
-from django.http import HttpResponse, FileResponse, HttpResponseRedirect, HttpResponseBadRequest, HttpResponseNotAllowed
+from django.http import HttpResponse, FileResponse, StreamingHttpResponse, HttpResponseRedirect, HttpResponseNotAllowed
 from django.template import RequestContext, Template
 
 from django.contrib.auth.decorators import login_required
@@ -16,7 +16,10 @@ from simrunner.instances import manager
 
 from uuid import UUID, uuid4
 
+import os
 import json
+import zipfile
+import asyncio
 
 class HttpResponseBackendError(HttpResponse):
 	status_code = 483 # Custom error code
@@ -134,7 +137,7 @@ def login_form(request):
 @authenticate_view(["GET"])
 def sim_header(request):
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 
 	sim_id = UUID(request.GET["uuid"])
 	simulation = models.lookup_simulation(sim_id)
@@ -156,10 +159,10 @@ def sim_header(request):
 @authenticate_view(["GET"])
 def viz_data(request):
 	if not "index" in request.GET:
-		return HttpResponseBadRequest("No frame index provided")
+		return HttpResponseBackendError("No frame index provided")
 
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 
 	# Read simulation file
 	sim_id = request.GET["uuid"]
@@ -169,7 +172,7 @@ def viz_data(request):
 		sim_id = UUID(sim_id)
 		index = int(index)
 	except Exception as e:
-		return HttpResponseBadRequest(f"Malformed input: {e}")
+		return HttpResponseBackendError(f"Malformed input: {e}")
 
 	files = archiver.get_simulation_step_files(sim_id, index)
 	if files is None: return HttpResponseBackendError(f"Index '{index}' in simulation '{sim_id}' does not exist")
@@ -182,10 +185,10 @@ def viz_data(request):
 @authenticate_view(["GET"])
 def cell_states(request):
 	if not "index" in request.GET:
-		return HttpResponseBadRequest("No frame index provided")
+		return HttpResponseBackendError("No frame index provided")
 
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 
 	# Read simulation file
 	sim_id = request.GET["uuid"]
@@ -200,13 +203,13 @@ def cell_states(request):
 @authenticate_view(["GET"])
 def cell_info_from_index(request):
 	if not "cellid" in request.GET:
-		return HttpResponseBadRequest("No cell index provided")
+		return HttpResponseBackendError("No cell index provided")
 
 	if not "frameindex" in request.GET:
-		return HttpResponseBadRequest("No frame index provided")
+		return HttpResponseBackendError("No frame index provided")
 
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 
 	# Read simulation file
 	sim_id = request.GET["uuid"]
@@ -228,7 +231,7 @@ def cell_info_from_index(request):
 @authenticate_view(["GET"])
 def shape_list(request):
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 
 	sim_id = request.GET["uuid"]
 
@@ -256,7 +259,7 @@ def list_owned_simulations(request):
 @authenticate_view(["GET"])
 def create_source_file(request):
 	if not "name" in request.GET:
-		return HttpResponseBadRequest("No file name provided")
+		return HttpResponseBackendError("No file name provided")
 	
 	src_name = request.GET["name"]
 	src_name = src_name.strip()
@@ -276,7 +279,7 @@ def create_source_file(request):
 @authenticate_view(["GET"])
 def delete_source_file(request):
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No file UUID provided")
+		return HttpResponseBackendError("No file UUID provided")
 
 	src_uuid = request.GET["uuid"]
 	entry = models.lookup_source_content(UUID(src_uuid))
@@ -290,7 +293,7 @@ def delete_source_file(request):
 
 def get_source_content(request):
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 	
 	uuid_val = UUID(request.GET["uuid"])
 	content =  ""
@@ -302,7 +305,7 @@ def get_source_content(request):
 	else:
 		simulation = models.lookup_simulation(uuid_val)
 		if simulation is None:
-			return HttpResponseBadRequest("Provided UUID does matches neiter a simulation nor a source file")
+			return HttpResponseBackendError("Provided UUID does matches neiter a simulation nor a source file")
 
 		if not simulation.source_uuid is None:
 			source_file = models.lookup_source_content(simulation.source_uuid)
@@ -331,7 +334,7 @@ def set_source_content(request):
 	else:
 		simulation = models.lookup_simulation(uuid_val)
 		if simulation is None:
-			return HttpResponseBadRequest("Provided UUID does matches neiter a simulation nor a source file")
+			return HttpResponseBackendError("Provided UUID does matches neiter a simulation nor a source file")
 
 		if not simulation.source_uuid is None:
 			source_file = models.lookup_source_content(simulation.source_uuid)
@@ -368,7 +371,7 @@ def create_new_simulation(request):
 	try:
 		creation_parameters = json.loads(request.body)
 	except json.JSONDecodeError as e:
-		return HttpResponseBadRequest(f"Invalid JSON provided as request body: {str(e)}")
+		return HttpResponseBackendError(f"Invalid JSON provided as request body: {str(e)}")
 
 	# Check parameters
 	sim_name = creation_parameters.get("name", None)
@@ -376,11 +379,11 @@ def create_new_simulation(request):
 	source_uuid = creation_parameters.get("source-uuid", None)
 	source_copy = creation_parameters.get("source-content", "")
 
-	if sim_name is None: return HttpResponseBadRequest("Simulation name not provided")
-	if sim_backend is None: return HttpResponseBadRequest("Simulation backend not specified")
-	if source_uuid is None and source_copy is None: return HttpResponseBadRequest("Neither simulation source nor source file provided")
+	if sim_name is None: return HttpResponseBackendError("Simulation name not provided")
+	if sim_backend is None: return HttpResponseBackendError("Simulation backend not specified")
+	if source_uuid is None and source_copy is None: return HttpResponseBackendError("Neither simulation source nor source file provided")
 
-	if not type(sim_backend) is str: return HttpResponseBadRequest(f"Invalid backend data type: {type(sim_backend)}")
+	if not type(sim_backend) is str: return HttpResponseBackendError(f"Invalid backend data type: {type(sim_backend)}")
 
 	# Check the simulation name
 	sim_name = sim_name.strip()
@@ -399,10 +402,13 @@ def create_new_simulation(request):
 
 	return HttpResponse(str(uuid))
 
+import logging
+logger = logging.getLogger(__name__)
+
 @authenticate_view(["GET"])
 def delete_simulation(request):
 	if not "uuid" in request.GET:
-		return HttpResponseBadRequest("No simulation UUID provided")
+		return HttpResponseBackendError("No simulation UUID provided")
 
 	sim_id = UUID(request.GET["uuid"])
 	simulation = models.lookup_simulation(sim_id)
@@ -411,8 +417,90 @@ def delete_simulation(request):
 		return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
 
 	if simulation.owner != request.user:
-		return HttpResponseBadRequest(f"Simluation not owned by user")
+		return HttpResponseBackendError(f"Simluation not owned by user")
 
-	manager.delete_simulation(sim_id)
+	ret = manager.delete_simulation(sim_id)
+
+	if type(ret) == manager.DownloadInProgress:
+		return HttpResponseBackendError(f"Simulation download is in progress. Cannot delete at this moment!")
 
 	return HttpResponse()
+
+class DownloadBuffer:
+	def __init__(self):
+		self.buffer = bytearray()
+
+	def write(self, data):
+		self.buffer.extend(data)
+
+		return len(data)
+	
+	def flush(self):
+		pass
+
+	def take(self):
+		buffer = self.buffer
+		self.buffer = bytearray()
+
+		return bytes(buffer)
+
+async def generate_download_stream(uuid, download_lock, source_copy):
+	with download_lock:
+		location = archiver.get_simulation_location(uuid)
+		buffer = DownloadBuffer()
+
+		with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED, compresslevel=2) as zip_file:
+			# Zip all the files under the simulation's folder 
+			for dirpath, dirs, files in os.walk(location):
+				subpath = os.path.relpath(dirpath, location)
+
+				for file in files:
+					filename = os.path.join(subpath, file)
+					filepath = os.path.join(dirpath, file)
+
+					zip_file.write(filepath, arcname=filename)
+
+					yield buffer.take()
+
+					# So... Python puts all async tasks/coroutines in one big "event loop". When the currently-running task "surrenders"
+					# control, the event loop will continue executing some other task (possibly). Notably, the "surrender" can only happen
+					# at specific points (the "yield" keyword has nothing to do with async, btw) that explicitly tell the event loop that
+					# the current task is "surrendering".
+					#
+					# Now... that being said, you'd think that django/daphne/whatever-the-hell-else would "surrender" after it receives a
+					# chunk from this generator function and writes it to the HTTP connection... it doesn't (at least django v5.2.8, and
+					# daphne v4.2.1 don't). So, we have to "surrender" manually. If we don't do this, the response will keep buffering on
+					# the server and memory usage will skyrocket!
+					await asyncio.sleep(0.001)
+
+			# Automatically insert a file that contains the source code of the simulation
+			zip_file.writestr("Copy of last-used source (Inserted automitically by WebCM).py", source_copy)
+
+		yield buffer.take()
+
+	return
+
+@authenticate_view(["GET"])
+def download_simulation(request):
+	if not "uuid" in request.GET:
+		return HttpResponseBackendError("No simulation UUID provided")
+	
+	sim_id = UUID(request.GET["uuid"])
+	simulation = models.lookup_simulation(sim_id)
+
+	if simulation is None:
+		return HttpResponseBackendError(f"Simulation '{sim_id}' does not exist")
+
+	if simulation.owner != request.user:
+		return HttpResponseBackendError(f"Simluation not owned by user")
+	
+	download_lock = manager.acquire_download_lock(sim_id)
+
+	if download_lock is None:
+		return HttpResponseBackendError(f"Cannot download because the simluation is currently running")
+
+	response = StreamingHttpResponse(generate_download_stream(sim_id, download_lock, simulation.source_copy), content_type='text/event-stream')
+	response["Content-Disposition"] = f"attachment; filename=\"Download '{simulation.title}'.zip\""
+	response['Cache-Control'] = 'no-cache'
+
+	return response

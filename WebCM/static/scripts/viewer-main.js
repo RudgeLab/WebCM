@@ -355,12 +355,20 @@ function createServerConnection(context) {
 				await requestShapes(context);
 			} else if (action === "status_change") {
 				setStatusFromServer(data);
-			} else if (action === "error_message") {
-				writeServerLogMessage("\n!!! A fatal error has occured !!!\n");
-				writeServerLogMessage(data);
-				showServerLog();
+			} else if (action === "server_message") {
+				if (data["is_error"]) {
+					writeServerLogMessage("\n!!! A fatal error has occured !!!\n");
+				}
 
-				setStatusMessage("Fatal Error");
+				writeServerLogMessage(data["content"]);
+
+				if (data["show_popup"]) {
+					showServerLog();
+				}
+
+				if (data["is_error"]) {
+					setStatusMessage("Fatal Error");
+				}
 			}
 		};
 		
@@ -448,6 +456,10 @@ function beginPlayback(context) {
 	closePlayback();
 }
 
+function downloadSimulation(context) {
+	window.open(`/api/downloadsim?uuid=${context["simUUID"]}`, "_blank");
+}
+
 function customFormat(value) {
 	if (typeof value == 'number') {
 		const magnitude = Math.pow(10, 5);
@@ -473,7 +485,9 @@ async function initFrame(gl, context) {
 	const initRotation = quat.fromEuler(quat.create(), -45, 0, 0);
 
 	context["selectedCellIndex"] = -1;
-	context["selectedCellIdentifier"] = -1;	
+	context["selectedCellIdentifier"] = -1;
+
+	context["playbackInfo"] = null;
 
 	//Initialize current frame data
 	context["currentFrame"] = {
@@ -533,9 +547,6 @@ async function initFrame(gl, context) {
 		"signalVolumeDensity": 1.0,
 	};
 
-	//Initialize playback state
-	context["playbackInfo"] = null;
-
 	//Initialize timeline slider 
 	const timelineSlider = document.getElementById("frame-timeline");
 	timelineSlider.min = 1;
@@ -583,6 +594,7 @@ async function initFrame(gl, context) {
 	if (tempButton = document.getElementById("source-btn")) tempButton.onclick = (e) => { window.open(`/edit/${uuid}/`, "_blank");s };
 	if (tempButton = document.getElementById("playback-begin-btn")) tempButton.onclick = (e) => { beginPlayback(context); };
 	if (tempButton = document.getElementById("reset-origin-btn")) tempButton.onclick = (e) => { resetOrigin(); };
+	if (tempButton = document.getElementById("download-btn")) tempButton.onclick = (e) => { downloadSimulation(context); };
 	if (tempButton = document.getElementById("playback-btn")) tempButton.onclick = (e) => { togglePlayback(); };
 	if (tempButton = document.getElementById("show-log-btn")) tempButton.onclick = (e) => { toggleServerLog(); };
 	if (tempButton = document.getElementById("settings-btn")) tempButton.onclick = (e) => { toggleSettings(); };	

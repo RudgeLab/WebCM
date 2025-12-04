@@ -4,7 +4,7 @@ from cloudserver.models import lookup_simulation
 from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
-from simrunner.instances import clientmessages
+from simrunner.instances import clientmessages as clmsg
 from simrunner.instances import manager
 
 from uuid import UUID
@@ -34,9 +34,7 @@ class UserCommsConsumer(WebsocketConsumer):
 			elif msg_action == "pause": self.handle_pause()
 			elif msg_action == "reload": self.handle_reload()
 		except Exception:
-			self.send_message("error_message", f"Exception occured in websocket connection handler:\n{traceback.format_exc()}")
-		
-		return
+			self.send_log_message(f"Exception occured in websocket connection handler:\n{traceback.format_exc()}", True, True)
 	
 	def disconnect(self, close_code):
 		wsgroups.remove_websocket_from_group(f"simcomms/{self.sim_uuid}", self)
@@ -77,24 +75,35 @@ class UserCommsConsumer(WebsocketConsumer):
 		self.send_message("connectheader", response_data)
 
 	def handle_start(self):
-		manager.continue_simulation(self.sim_uuid)
+		ret = manager.continue_simulation(self.sim_uuid)
+		self.show_download_message_maybe(ret)
 	
 	def handle_pause(self):
-		manager.pause_simulation(self.sim_uuid)
+		ret = manager.pause_simulation(self.sim_uuid)
+		self.show_download_message_maybe(ret)
 		
 	def handle_stop(self):
-		manager.kill_simulation(self.sim_uuid)
+		ret = manager.kill_simulation(self.sim_uuid)
+		self.show_download_message_maybe(ret)
 
 	def handle_reload(self):
-		manager.reload_simulation(self.sim_uuid)
+		ret = manager.reload_simulation(self.sim_uuid)
+		self.show_download_message_maybe(ret)
+
+	def show_download_message_maybe(self, ret):
+		if type(ret) == manager.DownloadInProgress:
+			self.send_log_message("!!! Someone is downloading the simulation.\n!!! The simulation must remaing stopped until the download ends\n", True, False)
 
 	def send_client_message(self, message):
 		if False: pass
-		elif type(message) == clientmessages.SimLaunch: self.send_message("simlaunch", "")
-		elif type(message) == clientmessages.NewFrame:  self.send_message("newframe", { "frameCount": message.frame_count })
-		elif type(message) == clientmessages.NewShape:  self.send_message("newshape", "")
-		elif type(message) == clientmessages.Status:    self.send_message("status_change", message.status)
-		elif type(message) == clientmessages.ErrorMessage: self.send_message("error_message", message.message)
+		elif type(message) == clmsg.SimLaunch: self.send_message("simlaunch", "")
+		elif type(message) == clmsg.NewFrame:  self.send_message("newframe", { "frameCount": message.frame_count })
+		elif type(message) == clmsg.NewShape:  self.send_message("newshape", "")
+		elif type(message) == clmsg.Status:    self.send_message("status_change", message.status)
+		elif type(message) == clmsg.ServerMessage: self.send_log_message(message.message, message.show_popup, message.is_error)
+
+	def send_log_message(self, content, show_popup, is_error):
+		self.send_message("server_message", { "content": content, "show_popup": show_popup, "is_error": is_error })
 
 	def send_message(self, action, data):
 		self.send(text_data=json.dumps({ "action": action, "data": data }))

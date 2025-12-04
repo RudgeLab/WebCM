@@ -14,6 +14,8 @@ class Status:
 	def __init__(self, status):
 		self.status = status
 
-class ErrorMessage:
-	def __init__(self, message):
+class ServerMessage:
+	def __init__(self, message, show_popup, is_error):
 		self.message = message
+		self.show_popup = show_popup
+		self.is_error = is_error

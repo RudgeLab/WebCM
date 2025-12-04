@@ -42,7 +42,7 @@ async function handleAcceptDelete(button) {
 		`/api/deletesimulation?uuid=${uuid}` :
 		`/api/deletesourcefile?uuid=${uuid}`;
 
-	await fetch(deleteURL, {
+	const response = await fetch(deleteURL, {
 		method: "GET",
 		headers: {
 //			"Accept": "text/plain",
@@ -51,8 +51,19 @@ async function handleAcceptDelete(button) {
 		}
 	});
 
-	if (isSimulation) await refreshSimList();
-	else await refreshSourceList();
+	if (!response.ok) {
+		let type = isSimulation ? "simulation" : "source file"
+
+		if (response.status == 483 /* Custom error code*/) {
+			let reason = await response.text();
+			alert(`Couldn't delete ${type} because: ${reason}`);
+		} else {
+			alert(`Couldn't delete ${type}`);
+		}
+	} else {
+		if (isSimulation) await refreshSimList();
+		else await refreshSourceList();
+	}
 }
 
 function setupTabs() {

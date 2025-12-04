@@ -36,6 +36,7 @@ urlpatterns = [
     path("api/cellstates", views.cell_states),
     path("api/cellinfoindex", views.cell_info_from_index),
     path("api/shapelist", views.shape_list),
+    path("api/downloadsim", views.download_simulation),
 
     path("api/listsimulations", views.list_owned_simulations),
     path("api/listsourcefiles", views.list_owned_source_files),

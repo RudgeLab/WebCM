@@ -5,13 +5,19 @@ from simrunner.instances.siminstance import SimulationInstance
 from saveviewer import archiver
 from uuid import UUID
 
+import logging
+logger = logging.getLogger(__name__)
+
 # NOTE(Jason): Yes, I know that globals are considered bad practice, but I couldn't find another way to do it.
 # This isn't "just some data that you can save in a database", so all solutions that invlove persistent
 # storage or caching are out the window. We also cannot use sessions because they are limited to a single
 # client connection.
 # I'm going to give it a bit of an unorthodox name so that is doesn't get used somewhere else accidentally
 global__active_instances = {}
-global__instance_lock = threading.Lock()
+global__instance_lock = threading.RLock()
+global__downloader_count = {}
+
+class DownloadInProgress: pass
 
 def create_simulation(user, sim_title, sim_version, sim_max_size, source_uuid, source_copy):
 	global global__active_instances
@@ -33,8 +39,19 @@ def create_simulation(user, sim_title, sim_version, sim_max_size, source_uuid, s
 def delete_simulation(uuid):
 	assert type(uuid) is UUID
 	
+	global global__downloader_count
+
+	if global__downloader_count.get(uuid, 0) > 0:
+		return DownloadInProgress()
+
 	kill_simulation(uuid)
 	archiver.remove_simulation(uuid)
+
+def is_simulation_running(uuid):
+	with global__instance_lock:
+		sim_instance = global__active_instances.get(uuid, None)
+
+		return (not sim_instance is None) and sim_instance.is_running()
 
 def get_simulation_status(uuid):
 	assert type(uuid) is UUID
@@ -67,6 +84,10 @@ def continue_simulation(uuid):
 
 	global global__active_instances
 	global global__instance_lock
+	global global__downloader_count
+
+	if global__downloader_count.get(uuid, 0) > 0:
+		return DownloadInProgress()
 
 	with global__instance_lock:
 		sim_instance = global__active_instances.get(uuid, None)
@@ -81,6 +102,10 @@ def pause_simulation(uuid):
 
 	global global__active_instances
 	global global__instance_lock
+	global global__downloader_count
+
+	if global__downloader_count.get(uuid, 0) > 0:
+		return True
 
 	with global__instance_lock:
 		sim_instance = global__active_instances.get(uuid, None)
@@ -95,14 +120,12 @@ def reload_simulation(uuid):
 
 	global global__active_instances
 	global global__instance_lock
+	global global__downloader_count
 
-	is_running = False
+	if global__downloader_count.get(uuid, 0) > 0:
+		return DownloadInProgress()
 
-	with global__instance_lock:
-		sim_instance = global__active_instances.get(uuid, None)
-		is_running = (not sim_instance is None) and sim_instance.is_running()
-
-	if is_running:
+	if is_simulation_running(uuid):
 		# NOTE(Jason): Originally, the message was sent to the simulation while the lock
 		# was still acquired. I changed it because it caused some problems with 'simthread'.
 		# There is a slight chance that this could cause an issue (e.g. if someone closes but before
@@ -126,3 +149,45 @@ def reload_simulation(uuid):
 			global__active_instances[uuid] = sim_instance
 
 	return True
+
+class DonwloadHandle:
+	def __init__(self, uuid):
+		global global__downloader_count
+		global__downloader_count[uuid] = global__downloader_count.get(uuid, 0) + 1
+		
+		self.uuid = uuid
+
+		logger.info(f"Locked sim for download (remaining={global__downloader_count[uuid]}): {self.uuid}")
+	
+	def __countdown(self):
+		global global__downloader_count
+
+		if self.uuid is None:
+			return
+
+		count = global__downloader_count[self.uuid] - 1
+		logger.info(f"Releasing sim from download (remaining={count}): {self.uuid}")
+
+		if count > 0:
+			global__downloader_count[self.uuid] = count
+		else:
+			global__downloader_count.pop(self.uuid)
+
+		self.uuid = None
+
+	def __enter__(self): pass
+	def __exit__(self, exception_type, exception_value, traceback): self.__countdown()
+	def __del__(self): self.__countdown()
+
+def acquire_download_lock(uuid):
+	global global__active_instances
+	global global__instance_lock
+	global global__downloader_count
+	
+	with global__instance_lock:
+		sim_instance = global__active_instances.get(uuid, None)
+
+		if not sim_instance is None and sim_instance.is_running() and not sim_instance.get_status_str() == "paused":
+			return None
+		
+		return DonwloadHandle(uuid)

@@ -94,7 +94,7 @@ class SimulationInstance:
 		elif action == "error_message":
 			archiver.update_cached_instance_index(self.uuid, data["new_data"])
 			
-			self.send_message_to_clients(clientmessages.ErrorMessage(data["new_data"]["crash_message"]))
+			self.send_message_to_clients(clientmessages.ServerMessage(data["new_data"]["crash_message"], True, True))
 		elif action == "status":
 			self.current_status = data
 			self.send_message_to_clients(clientmessages.Status(self.current_status))
