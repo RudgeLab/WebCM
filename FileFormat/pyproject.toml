@@ -1,0 +1,15 @@
+[project]
+name = "webcmformat"
+version = "1.0.0"
+description = "A library for opening WebCM files"
+readme = "README.md"
+license = "MIT"
+license-files = ["../LICEN[CS]E*"]
+dependencies = [
+    "msgpack >=1.0.5, <2.0.0",
+    "numpy >=1.24.2, <2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/RudgeLab/WebCM"
+Issues = "https://github.com/RudgeLab/WebCM/issues"

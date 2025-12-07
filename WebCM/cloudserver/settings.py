@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     # NOTE: Do not remove daphne! It is needed to run channels. I don't know why!!!!!!!
     'daphne',
     'cloudserver.apps.MainAppConfig',
-    'saveviewer.apps.SaveViewerConfig',
     'simrunner.apps.SimRunnerConfig',
     'userauth.apps.UserAuthConfig',
     'django.contrib.admin',
@@ -55,7 +54,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'saveviewer.apps.SaveArchiverMiddlware',
+    'simrunner.apps.SimRunnerMiddlware',
     'django.contrib.sessions.middleware.SessionMiddleware','django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',

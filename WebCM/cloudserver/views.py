@@ -10,9 +10,9 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 
 from cloudserver import settings, models
-from saveviewer import archiver
-from saveviewer import format as sv_format
-from simrunner.instances import manager
+from simrunner.instances import manager, archiver
+
+from webcmformat import format
 
 from uuid import UUID, uuid4
 
@@ -219,7 +219,7 @@ def cell_info_from_index(request):
 	files = archiver.get_simulation_step_files(UUID(sim_id), int(frameindex))
 	if files is None: return HttpResponseBackendError(f"No simulation with UUID '{sim_id}' (index {frameindex}) found")
 
-	cell_data = sv_format.read_state_with_id(files[0], int(cellid))
+	cell_data = format.read_state_with_id(files[0], int(cellid))
 	if cell_data is None: return HttpResponseBackendError(f"Failed find data for cell {cellid}")
 
 	response_content = json.dumps(cell_data.create_display_dict())

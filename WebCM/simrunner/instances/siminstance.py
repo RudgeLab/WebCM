@@ -5,7 +5,6 @@ import json
 import sys, os
 
 from cloudserver import settings
-from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
 
@@ -13,7 +12,7 @@ from simrunner.backends.backend import BackendParameters
 from simrunner.backends.cellmodeller4 import CellModeller4Backend
 from simrunner.backends.cellmodeller5 import CellModeller5Backend
 
-from simrunner.instances import clientmessages
+from simrunner.instances import clientmessages, archiver
 from simrunner.instances.duplex_pipe_endpoint import DuplexPipeEndpoint
 
 class _InstanceProcessParams:

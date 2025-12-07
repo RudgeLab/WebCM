@@ -1,11 +1,10 @@
 from channels.generic.websocket import WebsocketConsumer
 
 from cloudserver.models import lookup_simulation
-from saveviewer import archiver
 
 from simrunner import websocket_groups as wsgroups
 from simrunner.instances import clientmessages as clmsg
-from simrunner.instances import manager
+from simrunner.instances import manager, archiver
 
 from uuid import UUID
 

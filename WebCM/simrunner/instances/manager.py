@@ -1,8 +1,8 @@
 import threading
 
 from simrunner.instances.siminstance import SimulationInstance
+from simrunner.instances import archiver
 
-from saveviewer import archiver
 from uuid import UUID
 
 import logging
