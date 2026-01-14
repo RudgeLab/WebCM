@@ -246,10 +246,8 @@ def shape_list(request):
 
 @authenticate_view(["GET"])
 def list_owned_simulations(request):
-	entries = models.SimulationEntry.objects.filter(owner=request.user)
-
 	response_content = []
-	for sim in entries:
+	for sim in models.lookup_simulation_by_owner(request.user):
 		status = manager.get_simulation_status(sim.uuid)
 
 		response_content.append({ "uuid": str(sim.uuid), "title": sim.title, "status": status })

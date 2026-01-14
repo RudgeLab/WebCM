@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.utils import OperationalError
 
 import uuid
 
@@ -31,12 +32,20 @@ class PerUserSetting(models.Model):
 	def __str__(self):
 		return f"(Settings: {self.owner}, { '<no limit>' if self.max_cell_count <= 0 else self.max_cell_count })"
 
+def iterate_all_simulations():
+	from cloudserver.models import SimulationEntry
+	
+	try:
+		return iter(SimulationEntry.objects.all())
+	except OperationalError:
+		return iter([])
+
 def lookup_simulation(id):
 	from cloudserver.models import SimulationEntry
 	
 	try:
 		return SimulationEntry.objects.get(uuid=id)
-	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+	except (OperationalError, SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
 		return None
 
 def lookup_simulation_by_name(name):
@@ -44,23 +53,31 @@ def lookup_simulation_by_name(name):
 	
 	try:
 		return SimulationEntry.objects.get(title=name)
-	except (SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+	except (OperationalError, SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
 		return None
+	
+def lookup_simulation_by_owner(owning_user):
+	from cloudserver.models import SimulationEntry
+	
+	try:
+		return iter(SimulationEntry.objects.filter(owner=owning_user))
+	except (OperationalError, SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+		return iter([])
 
 def lookup_source_content(id):
 	try:
 		return SourceContentEntry.objects.get(uuid=id)
-	except (SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
+	except (OperationalError, SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
 		return None
 
 def lookup_source_content_by_name(name):
 	try:
 		return SourceContentEntry.objects.get(name=name)
-	except (SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
+	except (OperationalError, SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
 		return None
 
 def lookup_per_user_settings(user):
 	try:
 		return PerUserSetting.objects.get(owner=user)
-	except (PerUserSetting.DoesNotExist, PerUserSetting.MultipleObjectsReturned):
+	except (OperationalError, PerUserSetting.DoesNotExist, PerUserSetting.MultipleObjectsReturned):
 		return None

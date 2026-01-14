@@ -16,8 +16,7 @@ global__archiver = SaveArchiver()
 def initialize_save_archiver():
 	# We don't want to import this globally because it causes problems
 	# when the archiver is imported from the simulation instance process
-	from cloudserver.models import SimulationEntry
-	from django.db.utils import OperationalError
+	from cloudserver.models import iterate_all_simulations
 	import logging
 
 	logger = logging.getLogger(__name__)
@@ -28,14 +27,7 @@ def initialize_save_archiver():
 	pathlib.Path(global__archiver.archive_root).mkdir(parents=False, exist_ok=True)
 
 	# Read simulation indices
-	try:
-		# Because we call this method at an "unexpected" point during startup, the simulation entry table may
-		# not have been created yet (if it doesn't already exist from a previous run), which causes an exception.
-		all_objects = iter(SimulationEntry.objects.all())
-	except OperationalError:
-		all_objects = iter([])
-
-	for entry in all_objects:
+	for entry in iterate_all_simulations():
 		try:
 			save_dir = get_simulation_location(entry.uuid)
 			index_path = os.path.join(save_dir, "index.json")
