@@ -56,12 +56,12 @@ def lookup_simulation_by_name(name):
 	except (OperationalError, SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
 		return None
 	
-def lookup_simulation_by_owner(owning_user):
+def lookup_all_simulations_by_owner(owning_user):
 	from cloudserver.models import SimulationEntry
 	
 	try:
 		return iter(SimulationEntry.objects.filter(owner=owning_user))
-	except (OperationalError, SimulationEntry.DoesNotExist, SimulationEntry.MultipleObjectsReturned):
+	except (OperationalError, SimulationEntry.DoesNotExist):
 		return iter([])
 
 def lookup_source_content(id):
@@ -75,6 +75,12 @@ def lookup_source_content_by_name(name):
 		return SourceContentEntry.objects.get(name=name)
 	except (OperationalError, SourceContentEntry.DoesNotExist, SourceContentEntry.MultipleObjectsReturned):
 		return None
+	
+def lookup_all_source_content_by_owner(owning_user):
+	try:
+		return iter(SourceContentEntry.objects.filter(owner=owning_user))
+	except (OperationalError, SourceContentEntry.DoesNotExist):
+		return iter([])
 
 def lookup_per_user_settings(user):
 	try:

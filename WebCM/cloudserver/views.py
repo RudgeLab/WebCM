@@ -247,7 +247,8 @@ def shape_list(request):
 @authenticate_view(["GET"])
 def list_owned_simulations(request):
 	response_content = []
-	for sim in models.lookup_simulation_by_owner(request.user):
+	
+	for sim in models.lookup_all_simulations_by_owner(request.user):
 		status = manager.get_simulation_status(sim.uuid)
 
 		response_content.append({ "uuid": str(sim.uuid), "title": sim.title, "status": status })
@@ -351,10 +352,9 @@ def set_source_content(request):
 
 @authenticate_view(["GET"])
 def list_owned_source_files(request):
-	entries = models.SourceContentEntry.objects.filter(owner=request.user)
-
 	response_content = []
-	for src in entries:
+
+	for src in models.lookup_all_simulations_by_owner(request.user):
 		response_content.append({ "uuid": str(src.uuid), "title": src.name })
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
