@@ -139,7 +139,7 @@ async function submitCreateSimulationRequest() {
 		const sourceUpload = document.getElementById("input-upload-file");
 
 		sourceUpload.onchange = (event) => {
-			event.target.files[0].slice().text().then((content) => _create(name, null, content, version));
+			event.target.files[0].text().then((content) => _create(name, null, content, version));
 		};
 		sourceUpload.click();
 	} else {
