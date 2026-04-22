@@ -355,7 +355,7 @@ def list_owned_source_files(request):
 	response_content = []
 
 	for src in models.lookup_all_simulations_by_owner(request.user):
-		response_content.append({ "uuid": str(src.uuid), "title": src.name })
+		response_content.append({ "uuid": str(src.uuid), "title": src.title })
 
 	return response_no_cache(HttpResponse(json.dumps(response_content), content_type="application/json"))
 
