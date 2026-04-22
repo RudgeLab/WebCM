@@ -1,4 +1,4 @@
-import { ViewerRenderer } from './viewer-render.js'
+import { ViewerRenderer } from './renderer-main.js'
 
 function setSimName(name) {
 	document.getElementById("sim-name").innerHTML = `Name: ${name}`;
