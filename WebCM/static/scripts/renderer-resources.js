@@ -220,8 +220,8 @@ void main() {
 		float specularFactor = pow(max(dot(normal, lightDir), 0.0), 32.0);
 
 		float ambient = 0.4;
-		float diffuse = 0.5 * diffuseFactor;
-		float specular = 0.5 * specularFactor;
+		float diffuse = 0.4 * diffuseFactor;
+		float specular = 0.2 * specularFactor;
 
 		light = color * (ambient + diffuse) + vec3(specular);
 	}
