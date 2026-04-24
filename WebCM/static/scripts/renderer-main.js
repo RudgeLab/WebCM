@@ -618,6 +618,8 @@ async function initRenderer(gl, state) {
 	recreateAllFBOs(gl, state);
 	
 	//Init camera matrices
+	state.camera.rotation = quat.fromEuler(quat.create(), state.camera.pitch, state.camera.yaw, 0);
+
 	updateCameraView(state);
 	updateProjMatrix(state);
 }
