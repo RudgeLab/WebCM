@@ -77,7 +77,7 @@ class RenderState {
 		rotation = quat.fromEuler(quat.create(), 0, 0, 0);
 
 		yaw = 0;
-		pitch = -45;
+		pitch = -45; 
 
 		fovAngle = 60.0;
 		nearZ = 0.1;
@@ -101,6 +101,10 @@ class RenderState {
 		flatShading = true;
 		signalVolumeEnabled = true;
 		signalVolumeDensity = 1.0;
+
+		ambientContrib = 0.6;
+		diffuseContrib = 0.3;
+		specularContrib = 0.1;
 	};
 
 	static FrameRequestHandler = class {
@@ -580,7 +584,8 @@ function lookupCellIdentifier(data, index, cellCount) {
 async function initRenderer(gl, state) {
 	//Load shaders
 	state.cellShader = createShader(gl, CELL_SHADER_VERT, CELL_SHADER_FRAG, [
-		"u_ProjectionMatrix", "u_ViewMatrix", "u_InvViewMatrix", "u_SelectedIndex", "u_ShowOutline", "u_FlatShading"
+		"u_ProjectionMatrix", "u_ViewMatrix", "u_InvViewMatrix", "u_SelectedIndex", "u_ShowOutline", "u_FlatShading",
+		"u_AmbientContrib", "u_DiffuseContrib", "u_SpecularContrib"
 	]);
 
 	state.gridShader = createShader(gl, GRID_SHADER_VERT, GRID_SHADER_FRAG, [
@@ -784,6 +789,10 @@ function drawScene(gl, state) {
 	gl.uniform1i(cellShader.uniforms["u_SelectedIndex"], state.selectedCellIndex);
 	gl.uniform1i(cellShader.uniforms["u_ShowOutline"], showOutline);
 	gl.uniform1i(cellShader.uniforms["u_FlatShading"], flatShading);
+
+	gl.uniform1f(cellShader.uniforms["u_AmbientContrib"], state.renderSettings.ambientContrib);
+	gl.uniform1f(cellShader.uniforms["u_DiffuseContrib"], state.renderSettings.diffuseContrib);
+	gl.uniform1f(cellShader.uniforms["u_SpecularContrib"], state.renderSettings.specularContrib);
 
 	gl.bindVertexArray(bacteriumMesh.vao);
 	gl.drawElementsInstanced(gl.TRIANGLES, bacteriumMesh.indexCount, bacteriumMesh.indexType, 0, state.cellCount);

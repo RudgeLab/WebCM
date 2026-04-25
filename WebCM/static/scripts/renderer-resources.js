@@ -83,6 +83,10 @@ uniform mat4 u_ProjectionMatrix;
 uniform int u_ShowOutline;
 uniform int u_FlatShading;
 
+uniform float u_AmbientContrib;
+uniform float u_DiffuseContrib;
+uniform float u_SpecularContrib;
+
 in vec3 v_WorldPos;
 in float v_Radius;
 in vec3 v_CellEnd0;
@@ -219,9 +223,9 @@ void main() {
 		float diffuseFactor = pow(max(dot(normal, lightDir), 0.0), 4.0);
 		float specularFactor = pow(max(dot(normal, lightDir), 0.0), 32.0);
 
-		float ambient = 0.4;
-		float diffuse = 0.4 * diffuseFactor;
-		float specular = 0.2 * specularFactor;
+		float ambient = u_AmbientContrib;
+		float diffuse = u_DiffuseContrib * diffuseFactor;
+		float specular = u_SpecularContrib * specularFactor;
 
 		light = color * (ambient + diffuse) + vec3(specular);
 	}
