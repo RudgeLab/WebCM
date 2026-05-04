@@ -6,6 +6,7 @@ import io
 import os
 import struct
 import inspect
+import math
 
 import importlib
 
@@ -105,8 +106,19 @@ class CellModeller4Backend(SimulationBackend):
 		for id, state in cell_states.items():
 			packed_color = pack_norm_color(state.color[0], state.color[1], state.color[2], 1.0)
 
-			byte_buffer.write(struct.pack("<fff", state.pos[0], state.pos[2], state.pos[1]))
-			byte_buffer.write(struct.pack("<fff", state.dir[0], state.dir[2], state.dir[1]))
+			state_pos_x = state.pos[0]
+			state_pos_y = state.pos[2]
+			state_pos_z = state.pos[1]
+
+			state_dir_x = state.dir[0]
+			state_dir_y = state.dir[2]
+			state_dir_z = state.dir[1]
+
+			state_dir_yaw = math.atan2(state_dir_x, state_dir_z)
+			state_dir_pitch = math.acos(state_dir_y)
+
+			byte_buffer.write(struct.pack("<fff", state_pos_x, state_pos_y, state_pos_z))
+			byte_buffer.write(struct.pack("<ff",  state_dir_pitch, state_dir_yaw))
 			byte_buffer.write(struct.pack("<ffI", state.length, state.radius, packed_color))
 
 		# Write cell IDs

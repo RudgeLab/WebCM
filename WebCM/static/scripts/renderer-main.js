@@ -355,27 +355,30 @@ async function loadBacteriumModel(gltf, gl) {
 	createVertexAttribute(gl, gl.ARRAY_BUFFER, 2, texCoordsAccessor);
 
 	//Instance attributes
-	const instanceStride = 9 * 4;
+	const instanceStride = 32;
 
 	gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer);
 	
-	gl.vertexAttribPointer(3, 3, gl.FLOAT, false, instanceStride, 0);
-	gl.vertexAttribPointer(4, 3, gl.FLOAT, false, instanceStride, 12);
-	gl.vertexAttribPointer(5, 1, gl.FLOAT, false, instanceStride, 24);
-	gl.vertexAttribPointer(6, 1, gl.FLOAT, false, instanceStride, 28);
-	gl.vertexAttribPointer(7, 4, gl.UNSIGNED_BYTE, true, instanceStride, 32);
+	gl.vertexAttribPointer(3, 3, gl.FLOAT, false, instanceStride, 0);  //a_CellPos
+	gl.vertexAttribPointer(4, 1, gl.FLOAT, false, instanceStride, 12); //a_Pitch
+	gl.vertexAttribPointer(5, 1, gl.FLOAT, false, instanceStride, 16); //a_Yaw
+	gl.vertexAttribPointer(6, 1, gl.FLOAT, false, instanceStride, 20); //a_Length
+	gl.vertexAttribPointer(7, 1, gl.FLOAT, false, instanceStride, 24); //a_Radius
+	gl.vertexAttribPointer(8, 4, gl.UNSIGNED_BYTE, true, instanceStride, 28); //a_Color
 
 	gl.vertexAttribDivisor(3, 1);
 	gl.vertexAttribDivisor(4, 1);
 	gl.vertexAttribDivisor(5, 1);
 	gl.vertexAttribDivisor(6, 1);
 	gl.vertexAttribDivisor(7, 1);
+	gl.vertexAttribDivisor(8, 1);
 
 	gl.enableVertexAttribArray(3);
 	gl.enableVertexAttribArray(4);
 	gl.enableVertexAttribArray(5);
 	gl.enableVertexAttribArray(6);
 	gl.enableVertexAttribArray(7);
+	gl.enableVertexAttribArray(8);
 
 	//Indices
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferHandles[indexAccessor.bufferView]);
@@ -567,7 +570,7 @@ function updateFrameData(gl, state, dataBuffer) {
 */
 
 function calcCellVertexOffset(index) {
-	return 4 + 36 * index;
+	return 4 + 32 * index;
 }
 
 function calcCellIdOffset(index, cellCount) {
@@ -1307,18 +1310,11 @@ function doMousePick(state, mouseX, mouseY, viewportWidth, viewportHeight) {
 			dataView.getFloat32(baseOffset + 4, true),
 			dataView.getFloat32(baseOffset + 8, true),
 		);
-
-		const cellDir = vec3.fromValues(
-			dataView.getFloat32(baseOffset + 12, true),
-			dataView.getFloat32(baseOffset + 16, true),
-			dataView.getFloat32(baseOffset + 20, true),
-		);
-
-		const length = dataView.getFloat32(baseOffset + 24, true);
-		const radius = dataView.getFloat32(baseOffset + 28, true);
-
-		const yaw = Math.atan2(cellDir[0], cellDir[2]);
-		const pitch = Math.acos(cellDir[1]);
+		
+		const length = dataView.getFloat32(baseOffset + 12, true);
+		const pitch = dataView.getFloat32(baseOffset + 16, true);
+		const yaw = dataView.getFloat32(baseOffset + 20, true);
+		const radius = dataView.getFloat32(baseOffset + 24, true);
 
 		const rotVector = vec3.fromValues(
 			radius * Math.sin(yaw) * Math.sin(pitch),

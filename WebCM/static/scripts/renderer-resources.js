@@ -5,11 +5,12 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec3 a_Normal;
 layout(location = 2) in vec2 a_TexCoords;
 
-layout(location = 3) in vec3 a_CellPos;
-layout(location = 4) in vec3 a_CellDir;
-layout(location = 5) in float a_Length;
-layout(location = 6) in float a_Radius;
-layout(location = 7) in vec4 a_Color;
+layout(location = 3) in vec4 a_CellPos;
+layout(location = 4) in float a_Pitch;
+layout(location = 5) in float a_Yaw;
+layout(location = 6) in float a_Length;
+layout(location = 7) in float a_Radius;
+layout(location = 8) in vec4 a_Color;
 
 uniform mat4 u_ViewMatrix;
 uniform mat4 u_ProjectionMatrix;
@@ -25,13 +26,10 @@ flat out int v_IsSelected;
 
 void main() {
 	//Calculate rotation matrix
-	float yaw = atan(a_CellDir.x, a_CellDir.z);
-	float pitch = acos(a_CellDir.y);
-
-	float cy = cos(yaw);
-	float sy = sin(yaw);
-	float cp = cos(pitch);
-	float sp = sin(pitch);
+	float cy = cos(a_Yaw);
+	float sy = sin(a_Yaw);
+	float cp = cos(a_Pitch);
+	float sp = sin(a_Pitch);
 
 	float r = a_Radius;
 	float h = 0.5;

@@ -163,17 +163,6 @@ function connectToSimulation(context, uuid) {
 		});
 }
 
-function initializeRenderer(gl, context) {
-	return render.init(gl, context)
-		.catch((err) => {
-			writeServerLogMessage("An error occured when initializing the renderer");
-			writeServerLogMessage(`${err}`);
-			showServerLog();
-
-			console.log(err);
-		});
-}
-
 function createServerConnection(context) {
 	return new Promise((resolve, reject) => {
 		setStatusMessage("Connecting");
@@ -239,7 +228,7 @@ function createServerConnection(context) {
 
 				if (context["alwaysUseLatestStep"]) {
 					if (frameCount == 0) {
-						render.clearFrameData(context);
+						context["renderer"].clearFrame();
 						setSimFrame(0, 0);
 					} else {
 						context["renderer"].requestFrameAndDisplay(frameCount - 1);
@@ -247,7 +236,7 @@ function createServerConnection(context) {
 
 					context["timelineSlider"].value = frameCount;
 				} else {
-					setSimFrame(context["currentFrame"]["frameIndex"], context["simInfo"].frameCount);
+					setSimFrame(context["renderer"].state.currentFrameIndex + 1, context["simInfo"].frameCount);
 				}
 			} else if (action === "newshape") {
 				await requestShapes(context);
